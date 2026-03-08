@@ -37,7 +37,7 @@ Deletes an entire package in an organization. You cannot delete a public package
 ### org get
 
 ```sh
-gh pkg-kit org get <package-name> --type <type> [--owner <owner>] [--json <fields>] [--jq <expression>] [--template <template>]
+gh pkg-kit org get <package-name> --type <type> [--owner <owner>] [--format <format>] [--jq <expression>] [--template <template>]
 ```
 
 Gets a specific package in an organization.
@@ -53,7 +53,7 @@ Gets a specific package in an organization.
 ### org list
 
 ```sh
-gh pkg-kit org list [--type <type>] [--owner <owner>] [--visibility <visibility>] [--json <fields>] [--jq <expression>] [--template <template>]
+gh pkg-kit org list [--type <type>] [--owner <owner>] [--visibility <visibility>] [--format <format>] [--jq <expression>] [--template <template>]
 ```
 
 Lists packages in an organization readable by the user.
@@ -98,7 +98,7 @@ Deletes a specific package version in an organization. If the package is public 
 ### org versions get
 
 ```sh
-gh pkg-kit org versions get <package-name> <version-id> --type <type> [--owner <owner>] [--json <fields>] [--jq <expression>] [--template <template>]
+gh pkg-kit org versions get <package-name> <version-id> --type <type> [--owner <owner>] [--format <format>] [--jq <expression>] [--template <template>]
 ```
 
 Gets a specific package version in an organization.
@@ -114,7 +114,7 @@ Gets a specific package version in an organization.
 ### org versions list
 
 ```sh
-gh pkg-kit org versions list <package-name> --type <type> [--owner <owner>] [--state <state>] [--json <fields>] [--jq <expression>] [--template <template>]
+gh pkg-kit org versions list <package-name> --type <type> [--owner <owner>] [--state <state>] [--format <format>] [--jq <expression>] [--template <template>]
 ```
 
 Lists package versions for a package owned by an organization.
@@ -160,7 +160,7 @@ Deletes an entire package for a user. You cannot delete a public package if any 
 ### user get
 
 ```sh
-gh pkg-kit user get <package-name> --type <type> [--owner <owner>] [--json <fields>] [--jq <expression>] [--template <template>]
+gh pkg-kit user get <package-name> --type <type> [--owner <owner>] [--format <format>] [--jq <expression>] [--template <template>]
 ```
 
 Gets a specific package metadata for a package owned by a user.
@@ -176,7 +176,7 @@ Gets a specific package metadata for a package owned by a user.
 ### user list
 
 ```sh
-gh pkg-kit user list [--type <type>] [--owner <owner>] [--visibility <visibility>] [--json <fields>] [--jq <expression>] [--template <template>]
+gh pkg-kit user list [--type <type>] [--owner <owner>] [--visibility <visibility>] [--format <format>] [--jq <expression>] [--template <template>]
 ```
 
 Lists all packages in a user's namespace for which the requesting user has access.
@@ -221,7 +221,7 @@ Deletes a specific package version for a user. If the package is public and the 
 ### user versions get
 
 ```sh
-gh pkg-kit user versions get <package-name> <version-id> --type <type> [--owner <owner>] [--json <fields>] [--jq <expression>] [--template <template>]
+gh pkg-kit user versions get <package-name> <version-id> --type <type> [--owner <owner>] [--format <format>] [--jq <expression>] [--template <template>]
 ```
 
 Gets a specific package version for a package owned by a user.
@@ -237,7 +237,7 @@ Gets a specific package version for a package owned by a user.
 ### user versions list
 
 ```sh
-gh pkg-kit user versions list <package-name> --type <type> [--owner <owner>] [--state <state>] [--json <fields>] [--jq <expression>] [--template <template>]
+gh pkg-kit user versions list <package-name> --type <type> [--owner <owner>] [--state <state>] [--format <format>] [--jq <expression>] [--template <template>]
 ```
 
 Lists package versions for a package owned by a user.
