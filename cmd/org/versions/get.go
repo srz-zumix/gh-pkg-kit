@@ -39,9 +39,6 @@ func NewGetCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if owner == "" {
-				owner = repo.Owner
-			}
 			version, err := gh.GetOrgPackageVersion(ctx, g, repo, packageType, packageName, versionID)
 			if err != nil {
 				return err
