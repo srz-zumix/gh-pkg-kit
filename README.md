@@ -8,12 +8,34 @@ Package-related operations extensions for GitHub CLI.
 gh extension install srz-zumix/gh-pkg-kit
 ```
 
+## Shell Completion
+
+**Workaround Available!** While gh CLI doesn't natively support extension completion, we provide a patch script that enables it.
+
+**Prerequisites:** Before setting up gh-pkg-kit completion, ensure gh CLI completion is configured for your shell. See [gh completion documentation](https://cli.github.com/manual/gh_completion) for setup instructions.
+
+For detailed installation instructions and setup for each shell, see the [Shell Completion Guide](docs/shell-completion.md).
+
+## Configuration
+
+This tool automatically loads a `.env` file from the current directory on startup (via [godotenv](https://github.com/joho/godotenv)).
+You can set authentication tokens and other environment variables in a `.env` file instead of exporting them in your shell.
+
+See [.env.example](.env.example) for available variables and usage notes.
+
+| Variable | Description |
+| ---- | ----------- |
+| `GH_TOKEN` | Token for github.com (priority: GH_TOKEN > GITHUB_TOKEN > `gh auth` config) |
+| `GH_ENTERPRISE_TOKEN` | Token for GitHub Enterprise Server (priority: GH_ENTERPRISE_TOKEN > GITHUB_ENTERPRISE_TOKEN > `gh auth` config) |
+
+> **Note**: Container registries (ghcr.io / containers.\<host\>) require a classic PAT with `read:packages` / `write:packages` scope. Fine-grained tokens and OAuth App tokens may be rejected.
+
 ## Usage
 
 ### Global Flags
 
 | Flag | Short | Description | Default |
-|------|-------|-------------|---------|
+| ---- | ----- | ----------- | ------- |
 | `--help` | `-h` | Help for gh-pkg-kit | |
 | `--log-level` | `-L` | Set log level: {debug\|info\|warn\|error} | `info` |
 | `--read-only` | | Run in read-only mode (prevent write operations) | |
@@ -30,7 +52,7 @@ gh pkg-kit org delete <package-name> --type <type> [--owner <owner>]
 Deletes an entire package in an organization. You cannot delete a public package if any version of the package has more than 5,000 downloads.
 
 | Flag | Short | Description | Required | Default |
-|------|-------|-------------|----------|---------|
+| ---- | ----- | ----------- | -------- | ------- |
 | `--owner` | `-o` | Owner name | No | Current repository owner |
 | `--type` | `-T` | Package type (npm, maven, rubygems, docker, nuget, container) | Yes | |
 
@@ -43,7 +65,7 @@ gh pkg-kit org get <package-name> --type <type> [--owner <owner>] [--format <for
 Gets a specific package in an organization.
 
 | Flag | Short | Description | Required | Default |
-|------|-------|-------------|----------|---------|
+| ---- | ----- | ----------- | -------- | ------- |
 | `--format` | | Output format: {json} | No | |
 | `--jq` | `-q` | Filter JSON output using a jq expression | No | |
 | `--owner` | `-o` | Owner name | No | Current repository owner |
@@ -60,7 +82,7 @@ Lists packages in an organization readable by the user.
 If `--type` is not specified, lists packages for all package types.
 
 | Flag | Short | Description | Required | Default |
-|------|-------|-------------|----------|---------|
+| ---- | ----- | ----------- | -------- | ------- |
 | `--format` | | Output format: {json} | No | |
 | `--jq` | `-q` | Filter JSON output using a jq expression | No | |
 | `--owner` | `-o` | Owner name | No | Current repository owner |
@@ -78,7 +100,7 @@ Restores an entire package in an organization.
 The package must have been deleted within the last 30 days, and the same package namespace and version must still be available.
 
 | Flag | Short | Description | Required | Default |
-|------|-------|-------------|----------|---------|
+| ---- | ----- | ----------- | -------- | ------- |
 | `--owner` | `-o` | Owner name | No | Current repository owner |
 | `--type` | `-T` | Package type (npm, maven, rubygems, docker, nuget, container) | Yes | |
 
@@ -91,7 +113,7 @@ gh pkg-kit org versions delete <package-name> <version-id> --type <type> [--owne
 Deletes a specific package version in an organization. If the package is public and the package version has more than 5,000 downloads, you cannot delete the package version.
 
 | Flag | Short | Description | Required | Default |
-|------|-------|-------------|----------|---------|
+| ---- | ----- | ----------- | -------- | ------- |
 | `--owner` | `-o` | Owner name | No | Current repository owner |
 | `--type` | `-T` | Package type (npm, maven, rubygems, docker, nuget, container) | Yes | |
 
@@ -104,7 +126,7 @@ gh pkg-kit org versions get <package-name> <version-id> --type <type> [--owner <
 Gets a specific package version in an organization.
 
 | Flag | Short | Description | Required | Default |
-|------|-------|-------------|----------|---------|
+| ---- | ----- | ----------- | -------- | ------- |
 | `--format` | | Output format: {json} | No | |
 | `--jq` | `-q` | Filter JSON output using a jq expression | No | |
 | `--owner` | `-o` | Owner name | No | Current repository owner |
@@ -120,7 +142,7 @@ gh pkg-kit org versions list <package-name> --type <type> [--owner <owner>] [--s
 Lists package versions for a package owned by an organization.
 
 | Flag | Short | Description | Required | Default |
-|------|-------|-------------|----------|---------|
+| ---- | ----- | ----------- | -------- | ------- |
 | `--format` | | Output format: {json} | No | |
 | `--jq` | `-q` | Filter JSON output using a jq expression | No | |
 | `--owner` | `-o` | Owner name | No | Current repository owner |
@@ -138,9 +160,55 @@ Restores a specific package version in an organization.
 The package must have been deleted within the last 30 days, and the same package namespace and version must still be available.
 
 | Flag | Short | Description | Required | Default |
-|------|-------|-------------|----------|---------|
+| ---- | ----- | ----------- | -------- | ------- |
 | `--owner` | `-o` | Owner name | No | Current repository owner |
 | `--type` | `-T` | Package type (npm, maven, rubygems, docker, nuget, container) | Yes | |
+
+## migrate
+
+### migrate container
+
+```sh
+gh pkg-kit migrate container <package-name> --to <dest-owner>[/<dest-package-name>] [--from <source-owner>] [flags]
+```
+
+Migrates container (OCI/Docker) packages from one owner to another within GitHub Packages (ghcr.io).
+Uses the OCI Distribution API to copy image manifests and blobs, including multi-architecture images.
+The source owner is resolved from the current repository if --from is not specified.
+The source and destination owner types (organization or user) are detected automatically.
+
+| Flag | Short | Description | Required | Default |
+| ---- | ----- | ----------- | -------- | ------- |
+| `--delete` | | Delete source versions after successful migration | No | `false` |
+| `--dry-run` | | Show what would be migrated without performing the migration | No | `false` |
+| `--from` | | Source [host/]owner | No | Current repository owner |
+| `--latest` | `-n` | Migrate latest N versions (by creation date) | No | |
+| `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
+| `--to` | | Destination [host/]owner[/package-name] | Yes | |
+| `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
+| `--version` | | Migrate specific version(s) by ID (can be specified multiple times) | No | All versions |
+
+### migrate docker
+
+```sh
+gh pkg-kit migrate docker <package-name> --to <dest-owner>[/<dest-package-name>] [--from <source-owner>] [flags]
+```
+
+Migrates docker packages from one owner to another within GitHub Packages.
+Uses the OCI Distribution API to copy image manifests and blobs, including multi-architecture images.
+The source owner is resolved from the current repository if --from is not specified.
+The source and destination owner types (organization or user) are detected automatically.
+
+| Flag | Short | Description | Required | Default |
+| ---- | ----- | ----------- | -------- | ------- |
+| `--delete` | | Delete source versions after successful migration | No | `false` |
+| `--dry-run` | | Show what would be migrated without performing the migration | No | `false` |
+| `--from` | | Source [host/]owner | No | Current repository owner |
+| `--latest` | `-n` | Migrate latest N versions (by creation date) | No | |
+| `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
+| `--to` | | Destination [host/]owner[/package-name] | Yes | |
+| `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
+| `--version` | | Migrate specific version(s) by ID (can be specified multiple times) | No | All versions |
 
 ## user
 
@@ -153,7 +221,7 @@ gh pkg-kit user delete <package-name> --type <type> [--owner <owner>]
 Deletes an entire package for a user. You cannot delete a public package if any version of the package has more than 5,000 downloads.
 
 | Flag | Short | Description | Required | Default |
-|------|-------|-------------|----------|---------|
+| ---- | ----- | ----------- | -------- | ------- |
 | `--owner` | `-o` | Owner name | No | Authenticated user |
 | `--type` | `-T` | Package type (npm, maven, rubygems, docker, nuget, container) | Yes | |
 
@@ -166,7 +234,7 @@ gh pkg-kit user get <package-name> --type <type> [--owner <owner>] [--format <fo
 Gets a specific package metadata for a package owned by a user.
 
 | Flag | Short | Description | Required | Default |
-|------|-------|-------------|----------|---------|
+| ---- | ----- | ----------- | -------- | ------- |
 | `--format` | | Output format: {json} | No | |
 | `--jq` | `-q` | Filter JSON output using a jq expression | No | |
 | `--owner` | `-o` | Owner name | No | Authenticated user |
@@ -183,7 +251,7 @@ Lists all packages in a user's namespace for which the requesting user has acces
 If `--type` is not specified, lists packages for all package types.
 
 | Flag | Short | Description | Required | Default |
-|------|-------|-------------|----------|---------|
+| ---- | ----- | ----------- | -------- | ------- |
 | `--format` | | Output format: {json} | No | |
 | `--jq` | `-q` | Filter JSON output using a jq expression | No | |
 | `--owner` | `-o` | Owner name | No | Authenticated user |
@@ -201,7 +269,7 @@ Restores an entire package for a user.
 The package must have been deleted within the last 30 days, and the same package namespace and version must still be available.
 
 | Flag | Short | Description | Required | Default |
-|------|-------|-------------|----------|---------|
+| ---- | ----- | ----------- | -------- | ------- |
 | `--owner` | `-o` | Owner name | No | Authenticated user |
 | `--type` | `-T` | Package type (npm, maven, rubygems, docker, nuget, container) | Yes | |
 
@@ -214,7 +282,7 @@ gh pkg-kit user versions delete <package-name> <version-id> --type <type> [--own
 Deletes a specific package version for a user. If the package is public and the package version has more than 5,000 downloads, you cannot delete the package version.
 
 | Flag | Short | Description | Required | Default |
-|------|-------|-------------|----------|---------|
+| ---- | ----- | ----------- | -------- | ------- |
 | `--owner` | `-o` | Owner name | No | Authenticated user |
 | `--type` | `-T` | Package type (npm, maven, rubygems, docker, nuget, container) | Yes | |
 
@@ -227,7 +295,7 @@ gh pkg-kit user versions get <package-name> <version-id> --type <type> [--owner 
 Gets a specific package version for a package owned by a user.
 
 | Flag | Short | Description | Required | Default |
-|------|-------|-------------|----------|---------|
+| ---- | ----- | ----------- | -------- | ------- |
 | `--format` | | Output format: {json} | No | |
 | `--jq` | `-q` | Filter JSON output using a jq expression | No | |
 | `--owner` | `-o` | Owner name | No | Authenticated user |
@@ -243,7 +311,7 @@ gh pkg-kit user versions list <package-name> --type <type> [--owner <owner>] [--
 Lists package versions for a package owned by a user.
 
 | Flag | Short | Description | Required | Default |
-|------|-------|-------------|----------|---------|
+| ---- | ----- | ----------- | -------- | ------- |
 | `--format` | | Output format: {json} | No | |
 | `--jq` | `-q` | Filter JSON output using a jq expression | No | |
 | `--owner` | `-o` | Owner name | No | Authenticated user |
@@ -261,6 +329,6 @@ Restores a specific package version for a user.
 The package must have been deleted within the last 30 days, and the same package namespace and version must still be available.
 
 | Flag | Short | Description | Required | Default |
-|------|-------|-------------|----------|---------|
+| ---- | ----- | ----------- | -------- | ------- |
 | `--owner` | `-o` | Owner name | No | Authenticated user |
 | `--type` | `-T` | Package type (npm, maven, rubygems, docker, nuget, container) | Yes | |
