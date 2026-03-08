@@ -1,11 +1,10 @@
 package org
 
 import (
-	"fmt"
-
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/spf13/cobra"
 	"github.com/srz-zumix/go-gh-extension/pkg/gh"
+	"github.com/srz-zumix/go-gh-extension/pkg/logger"
 	"github.com/srz-zumix/go-gh-extension/pkg/parser"
 )
 
@@ -37,7 +36,7 @@ The package must have been deleted within the last 30 days, and the same package
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Package '%s' restored in organization '%s'\n", packageName, repo.Owner)
+			logger.Info("Package restored", "package", packageName, "org", repo.Owner)
 			return nil
 		},
 	}

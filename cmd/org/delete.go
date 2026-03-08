@@ -1,11 +1,10 @@
 package org
 
 import (
-	"fmt"
-
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/spf13/cobra"
 	"github.com/srz-zumix/go-gh-extension/pkg/gh"
+	"github.com/srz-zumix/go-gh-extension/pkg/logger"
 	"github.com/srz-zumix/go-gh-extension/pkg/parser"
 )
 
@@ -36,7 +35,7 @@ func NewDeleteCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Package '%s' deleted from organization '%s'\n", packageName, repo.Owner)
+			logger.Info("Package deleted", "package", packageName, "org", repo.Owner)
 			return nil
 		},
 	}

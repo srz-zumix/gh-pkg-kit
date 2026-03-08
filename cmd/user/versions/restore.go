@@ -7,6 +7,7 @@ import (
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/spf13/cobra"
 	"github.com/srz-zumix/go-gh-extension/pkg/gh"
+	"github.com/srz-zumix/go-gh-extension/pkg/logger"
 )
 
 // NewRestoreCmd creates a command to restore a package version for a user
@@ -37,7 +38,7 @@ The package must have been deleted within the last 30 days, and the same package
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Version %d of package '%s' restored for user '%s'\n", versionID, packageName, owner)
+			logger.Info("Version restored", "version", versionID, "package", packageName, "user", owner)
 			return nil
 		},
 	}

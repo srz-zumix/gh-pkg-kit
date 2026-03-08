@@ -7,6 +7,7 @@ import (
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/spf13/cobra"
 	"github.com/srz-zumix/go-gh-extension/pkg/gh"
+	"github.com/srz-zumix/go-gh-extension/pkg/logger"
 )
 
 // NewDeleteCmd creates a command to delete a package version for a user
@@ -36,7 +37,7 @@ func NewDeleteCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Version %d of package '%s' deleted for user '%s'\n", versionID, packageName, owner)
+			logger.Info("Version deleted", "version", versionID, "package", packageName, "user", owner)
 			return nil
 		},
 	}
