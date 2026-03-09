@@ -10,12 +10,13 @@ The source/destination owner type (organization or user) is determined internall
 ## Command Structure
 
 ```sh
-gh pkg-kit migrate <package-type> <source-owner>/<package-name> --to <dest-owner>[/<dest-package-name>] [flags]
+gh pkg-kit migrate <package-type> <package-name> --to <dest-owner>[/<dest-package-name>] [--from <source-owner>] [flags]
 ```
 
 - `<package-type>`: One of `container`, `npm`, `maven`, `rubygems`, `nuget`, `docker`
-- `<source-owner>/<package-name>`: Source package identifier
-- `--to`: Destination owner (and optionally a different package name). If package name is omitted, the source package name is used.
+- `<package-name>`: Source package name
+- `--from`: Source [host/]owner. If omitted, resolved from the current repository owner.
+- `--to`: Destination [host/]owner[/package-name]. If package name is omitted, the source package name is used. Host is detected by '.' in the first segment.
 
 ### Subcommands
 
@@ -32,13 +33,14 @@ gh pkg-kit migrate docker ...
 
 | Flag | Short | Description | Required | Default |
 | ---- | ----- | ----------- | -------- | ------- |
-| `--to` | | Destination owner[/package-name] | Yes | |
-| `--delete` | | Delete source package/versions after successful migration | No | `false` |
-| `--dry-run` | | Show what would be migrated without actually performing the migration | No | `false` |
-| `--version` | | Migrate specific version(s) by ID (can be specified multiple times) | No | All versions |
+| `--delete` | | Delete source versions after successful migration | No | `false` |
+| `--dry-run` | | Show what would be migrated without performing the migration | No | `false` |
+| `--from` | | Source [host/]owner | No | Current repository owner |
 | `--latest` | `-n` | Migrate latest N versions (by creation date) | No | |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
+| `--to` | | Destination [host/]owner[/package-name] | Yes | |
 | `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
+| `--version` | | Migrate specific version(s) by ID (can be specified multiple times) | No | All versions |
 
 ### Version Selection
 
@@ -70,15 +72,16 @@ This is done for both source and destination owners so the correct API endpoints
 
 ### container / docker
 
-Container images (OCI/Docker) are stored in `ghcr.io`.
+Container images (OCI/Docker) are stored in `ghcr.io` (or `containers.<host>` for GHES).
 Migration copies image manifests and blobs between registries.
 
-- **Source**: `ghcr.io/<source-owner>/<package-name>:<tag>`
-- **Destination**: `ghcr.io/<dest-owner>/<dest-package-name>:<tag>`
-- **Method**: TBD (candidates: `crane copy`, `oras copy`, `skopeo copy`, or direct OCI Distribution API calls)
-- **Version mapping**: Each `PackageVersion` corresponds to a tag or digest. The version's `Name` field is used as the tag.
-- **Authentication**: Uses the GitHub token (`gh auth token`) for both source and destination `ghcr.io` registries.
-- **Note**: Multi-architecture images (manifest lists/OCI index) must be handled correctly — all referenced manifests and blobs must be copied.
+- **Source**: `ghcr.io/<source-owner>/<package-name>:<tag>` (or `@<digest>` for untagged versions)
+- **Destination**: `ghcr.io/<dest-owner>/<dest-package-name>:<tag>` (or `@<digest>`)
+- **Method**: `crane copy` ([google/go-containerregistry](https://github.com/google/go-containerregistry))
+- **Version mapping**: Each `PackageVersion` corresponds to one or more tags or a digest. Tagged versions are copied per-tag; untagged versions are copied by digest reference.
+- **Authentication**: Uses a `ghKeychain` that resolves credentials per container registry host via `gh auth token`. Supports cross-host migration (e.g., github.com ↔ GHES).
+- **Note**: Multi-architecture images (manifest lists/OCI index) are handled correctly by `crane copy` — all referenced manifests and blobs are copied.
+- **GHES Note**: Container registries on GHES require a classic PAT with `read:packages`/`write:packages` scope. OAuth App tokens may be rejected. Set `GH_ENTERPRISE_TOKEN` in `.env` or environment.
 
 ### npm
 
@@ -146,18 +149,22 @@ NuGet packages are stored in the GitHub NuGet registry (`nuget.pkg.github.com`).
 - If any version migration fails, continue with remaining versions and report failures at the end.
 - The `--delete` operation only deletes versions that were successfully migrated.
 
-## Directory/File Structure (planned)
+## Directory/File Structure
 
 ```text
 cmd/
   migrate.go              # Parent 'migrate' command, registers subcommands
   migrate/
-    container.go          # migrate container subcommand
-    npm.go                # migrate npm subcommand
-    maven.go              # migrate maven subcommand
-    rubygems.go           # migrate rubygems subcommand
-    nuget.go              # migrate nuget subcommand
-    docker.go             # migrate docker subcommand
+    container.go          # migrate container/docker subcommand (shared via newContainerMigrateCmd)
+    docker.go             # migrate docker subcommand (delegates to newContainerMigrateCmd)
+    npm.go                # migrate npm subcommand (planned)
+    maven.go              # migrate maven subcommand (planned)
+    rubygems.go           # migrate rubygems subcommand (planned)
+    nuget.go              # migrate nuget subcommand (planned)
+
+pkg/
+  packages/
+    container.go          # Container/docker migration logic (MigrateContainer, auth, version filter)
 
 go-gh-extension/pkg/gh/
   migrate.go              # Common migration wrapper functions (owner type detection, version filtering)
@@ -168,7 +175,7 @@ go-gh-extension/pkg/gh/client/
 
 ## Open Questions
 
-- [ ] Which external tool to use for container migration? (`crane` / `oras` / `skopeo` / direct API)
+- [x] Which external tool to use for container migration? → `crane` (google/go-containerregistry)
 - [ ] For npm, is re-publishing with modified `package.json` necessary, or can the tarball be published as-is?
 - [ ] For maven, should a `--repo` flag be added to specify the destination repository?
 - [ ] Should there be a `--force` flag to overwrite existing versions at the destination?

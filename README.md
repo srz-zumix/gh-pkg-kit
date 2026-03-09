@@ -14,7 +14,7 @@ gh extension install srz-zumix/gh-pkg-kit
 
 **Prerequisites:** Before setting up gh-pkg-kit completion, ensure gh CLI completion is configured for your shell. See [gh completion documentation](https://cli.github.com/manual/gh_completion) for setup instructions.
 
-For detailed installation instructions and setup for each shell, see the [Shell Completion Guide](docs/shell-completion.md).
+For detailed installation instructions and setup for each shell, see the [Shell Completion Guide](https://github.com/srz-zumix/go-gh-extension/blob/main/docs/shell-completion.md).
 
 ## Configuration
 
@@ -172,7 +172,7 @@ The package must have been deleted within the last 30 days, and the same package
 gh pkg-kit migrate container <package-name> --to <dest-owner>[/<dest-package-name>] [--from <source-owner>] [flags]
 ```
 
-Migrates container (OCI/Docker) packages from one owner to another within GitHub Packages (ghcr.io).
+Migrates container packages from one owner to another within GitHub Packages.
 Uses the OCI Distribution API to copy image manifests and blobs, including multi-architecture images.
 The source owner is resolved from the current repository if --from is not specified.
 The source and destination owner types (organization or user) are detected automatically.
