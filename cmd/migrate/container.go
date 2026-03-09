@@ -17,14 +17,15 @@ func NewContainerCmd() *cobra.Command {
 // newContainerMigrateCmd creates a migrate command for the given container-based package type.
 func newContainerMigrateCmd(packageType string) *cobra.Command {
 	var (
-		from       string
-		to         string
-		deleteFlag bool
-		dryRun     bool
-		versionIDs []int64
-		latest     int
-		since      string
-		until      string
+		from          string
+		to            string
+		deleteFlag    bool
+		dryRun        bool
+		rewriteLabels bool
+		versionIDs    []int64
+		latest        int
+		since         string
+		until         string
 	)
 
 	cmd := &cobra.Command{
@@ -62,19 +63,20 @@ The source and destination owner types (organization or user) are detected autom
 			ctx := cmd.Context()
 
 			return packages.MigrateContainer(ctx, srcClient, destClient, packages.ContainerOptions{
-				PackageType: packageType,
-				SrcHost:     repo.Host,
-				DestHost:    destHost,
-				SrcOwner:    srcOwner,
-				SrcPackage:  srcPackage,
-				DestOwner:   dest.Owner,
-				DestPackage: dest.Package,
-				DeleteFlag:  deleteFlag,
-				DryRun:      dryRun,
-				VersionIDs:  versionIDs,
-				Latest:      latest,
-				Since:       since,
-				Until:       until,
+				PackageType:   packageType,
+				SrcHost:       repo.Host,
+				DestHost:      destHost,
+				SrcOwner:      srcOwner,
+				SrcPackage:    srcPackage,
+				DestOwner:     dest.Owner,
+				DestPackage:   dest.Package,
+				DeleteFlag:    deleteFlag,
+				DryRun:        dryRun,
+				RewriteLabels: rewriteLabels,
+				VersionIDs:    versionIDs,
+				Latest:        latest,
+				Since:         since,
+				Until:         until,
 			})
 		},
 	}
@@ -85,6 +87,7 @@ The source and destination owner types (organization or user) are detected autom
 	_ = cmd.MarkFlagRequired("to")
 	f.BoolVar(&deleteFlag, "delete", false, "Delete source versions after successful migration")
 	f.BoolVar(&dryRun, "dry-run", false, "Show what would be migrated without performing the migration")
+	f.BoolVar(&rewriteLabels, "rewrite-labels", false, "Rewrite OCI image config labels (e.g. org.opencontainers.image.source) to reflect the destination owner/host (changes image digest)")
 	f.Int64SliceVar(&versionIDs, "version", nil, "Migrate specific version(s) by ID (can be specified multiple times)")
 	f.IntVarP(&latest, "latest", "n", 0, "Migrate latest N versions (by creation date)")
 	f.StringVar(&since, "since", "", "Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD)")

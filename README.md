@@ -183,6 +183,7 @@ The source and destination owner types (organization or user) are detected autom
 | `--dry-run` | | Show what would be migrated without performing the migration | No | `false` |
 | `--from` | | Source [host/]owner | No | Current repository owner |
 | `--latest` | `-n` | Migrate latest N versions (by creation date) | No | |
+| `--rewrite-labels` | | Rewrite OCI image config labels (e.g. `org.opencontainers.image.source`) to reflect the destination owner/host (changes image digest) | No | `false` |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
 | `--to` | | Destination [host/]owner[/package-name] | Yes | |
 | `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
@@ -205,6 +206,7 @@ The source and destination owner types (organization or user) are detected autom
 | `--dry-run` | | Show what would be migrated without performing the migration | No | `false` |
 | `--from` | | Source [host/]owner | No | Current repository owner |
 | `--latest` | `-n` | Migrate latest N versions (by creation date) | No | |
+| `--rewrite-labels` | | Rewrite OCI image config labels (e.g. `org.opencontainers.image.source`) to reflect the destination owner/host (changes image digest) | No | `false` |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
 | `--to` | | Destination [host/]owner[/package-name] | Yes | |
 | `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |

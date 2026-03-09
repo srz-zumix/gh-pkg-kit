@@ -37,6 +37,7 @@ gh pkg-kit migrate docker ...
 | `--dry-run` | | Show what would be migrated without performing the migration | No | `false` |
 | `--from` | | Source [host/]owner | No | Current repository owner |
 | `--latest` | `-n` | Migrate latest N versions (by creation date) | No | |
+| `--rewrite-labels` | | Rewrite OCI image config labels to reflect the destination owner/host (container/docker only, changes image digest) | No | `false` |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
 | `--to` | | Destination [host/]owner[/package-name] | Yes | |
 | `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
@@ -81,6 +82,7 @@ Migration copies image manifests and blobs between registries.
 - **Version mapping**: Each `PackageVersion` corresponds to one or more tags or a digest. Tagged versions are copied per-tag; untagged versions are copied by digest reference.
 - **Authentication**: Uses a `ghKeychain` that resolves credentials per container registry host via `gh auth token`. Supports cross-host migration (e.g., github.com ↔ GHES).
 - **Note**: Multi-architecture images (manifest lists/OCI index) are handled correctly by `crane copy` — all referenced manifests and blobs are copied.
+- **Label rewriting** (`--rewrite-labels`): When enabled, OCI image config labels containing the source owner URL (e.g. `org.opencontainers.image.source`, `org.opencontainers.image.url`) are rewritten to reflect the destination owner/host. This uses `mutate.ConfigFile` from go-containerregistry instead of `crane copy`, which changes the image digest. For multi-arch images, each platform image's labels are rewritten and the index is rebuilt. Label rewriting is only applied to tagged versions; untagged (digest-only) versions are copied as-is.
 - **GHES Note**: Container registries on GHES require a classic PAT with `read:packages`/`write:packages` scope. OAuth App tokens may be rejected. Set `GH_ENTERPRISE_TOKEN` in `.env` or environment.
 
 ### npm
