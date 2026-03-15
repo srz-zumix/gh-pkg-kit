@@ -245,8 +245,6 @@ Package name change is not supported; the source package name is always used at 
 
 ## user
 
-## user
-
 ### user delete
 
 ```sh
