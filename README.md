@@ -209,8 +209,8 @@ Package name change is not supported; the source package name is always used at 
 | `--delete` | | Delete source versions after successful migration | No | `false` |
 | `--dst` | | Destination [host/]owner/repo | Yes | |
 | `--dst-token` | | Access token for destination owner (fallback: `$GH_DST_TOKEN`) | No | |
-| `--dry-run` | | Show what would be migrated without performing the migration | No | `false` |
-| `--latest` | `-n` | Migrate latest N versions (by creation date) | No | |
+| `--dry-run` | `-n` | Show what would be migrated without performing the migration | No | `false` |
+| `--latest` | `-l` | Migrate latest N versions (by creation date) | No | |
 | `--rewrite-labels` | | Rewrite OCI image config labels to reflect destination owner/host (changes image digest) | No | `false` |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
 | `--src` | | Source [host/]owner | No | Current repository owner |
