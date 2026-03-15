@@ -35,10 +35,10 @@ gh pkg-kit migrate docker ...
 | Flag | Short | Description | Required | Default |
 | ---- | ----- | ----------- | -------- | ------- |
 | `--delete` | | Delete source versions after successful migration | No | `false` |
-| `--dry-run` | | Show what would be migrated without performing the migration | No | `false` |
+| `--dry-run` | `-n` | Show what would be migrated without performing the migration | No | `false` |
 | `--src` | | Source [host/]owner | No | Current repository owner |
 | `--dst` | | Destination [host/]owner/repo (host detected by '.' in first segment) | Yes | |
-| `--latest` | `-n` | Migrate latest N versions (by creation date) | No | |
+| `--latest` | `-l` | Migrate latest N versions (by creation date) | No | |
 | `--rewrite-labels` | | Rewrite OCI image config labels to reflect the destination owner/host (container/docker only, changes image digest) | No | `false` |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
 | `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
