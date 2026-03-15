@@ -97,8 +97,13 @@ The source and destination owner types (organization or user) are detected autom
 				if !skipRewriteRepository {
 					// Rewrite the <repository> element in the .nuspec before pushing.
 					rewriteResult, err := gh.RewriteNuPkgRepository(tmpSrc, repoURL, "")
-					tmpSrc.Close()
-					os.Remove(tmpSrc.Name())
+					if closeErr := tmpSrc.Close(); closeErr != nil {
+						logger.Error("Failed to close temporary source file", "version", versionName, "error", closeErr)
+					}
+					if removeErr := os.Remove(tmpSrc.Name()); removeErr != nil {
+						logger.Error("Failed to remove temporary source file", "version", versionName, "error", removeErr)
+					}
+
 					if err != nil {
 						logger.Error("Failed to rewrite nuspec repository", "version", versionName, "error", err)
 						failures = append(failures, fmt.Sprintf("version %d (%s): nuspec rewrite failed: %v", v.GetID(), versionName, err))
@@ -111,8 +116,13 @@ The source and destination owner types (organization or user) are detected autom
 				}
 
 				pushErr := gh.PushNuGetPackage(ctx, clients.DestClient, clients.DestRepo, rewritten)
-				rewritten.Close()
-				os.Remove(rewritten.Name())
+				if closeErr := rewritten.Close(); closeErr != nil {
+					logger.Error("Failed to close rewritten file", "version", versionName, "error", closeErr)
+				}
+				if removeErr := os.Remove(rewritten.Name()); removeErr != nil {
+					logger.Error("Failed to remove rewritten file", "version", versionName, "error", removeErr)
+				}
+
 				if pushErr != nil {
 					logger.Error("Failed to push NuGet package", "version", versionName, "error", pushErr)
 					failures = append(failures, fmt.Sprintf("version %d (%s): push failed: %v", v.GetID(), versionName, pushErr))

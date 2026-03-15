@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/srz-zumix/gh-pkg-kit/pkg/migrator"
 	"github.com/srz-zumix/go-gh-extension/pkg/gh"
+	"github.com/srz-zumix/go-gh-extension/pkg/logger"
 	"github.com/srz-zumix/go-gh-extension/pkg/parser"
 )
 
@@ -61,8 +62,11 @@ The output file defaults to <package-name>.<version>.nupkg in the current direct
 			if err != nil {
 				return fmt.Errorf("failed to download '%s' version '%s': %w", packageName, version, err)
 			}
-			f.Close()
-			fmt.Fprintf(cmd.OutOrStdout(), "Downloaded %s\n", f.Name())
+			if closeErr := f.Close(); closeErr != nil {
+				logger.Error("Failed to close downloaded file", "package", packageName, "version", version, "error", closeErr)
+			}
+
+			logger.Info("Downloaded", "package", packageName, "version", version, "to", destPath)
 			return nil
 		},
 	}
