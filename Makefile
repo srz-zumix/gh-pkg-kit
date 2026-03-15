@@ -38,6 +38,6 @@ testdata-nuget-pack: ## Build the sample NuGet package (.nupkg)
 	dotnet pack $(NUGET_TESTDATA_DIR) -c Release
 
 testdata-nuget-publish: testdata-nuget-pack ## Build and publish the sample NuGet package to GitHub Packages
-	dotnet nuget push $(NUGET_TESTDATA_DIR)/bin/Release/SampleNuGetPkg.*.nupkg \
+	@dotnet nuget push $(NUGET_TESTDATA_DIR)/bin/Release/SampleNuGetPkg.*.nupkg \
 		--source "https://nuget.pkg.github.com/$(GITHUB_OWNER)/index.json" \
 		--api-key "$(GITHUB_TOKEN)"
