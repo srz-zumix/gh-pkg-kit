@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- NuGet package metadata -->
+    <PackageId>SampleNuGetPkg</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>srz-zumix</Authors>
+    <Description>Sample NuGet package for gh-pkg-kit integration testing.</Description>
+    <PackageTags>test sample</PackageTags>
+    <RepositoryUrl>https://github.com/srz-zumix/gh-pkg-kit</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+</Project>
