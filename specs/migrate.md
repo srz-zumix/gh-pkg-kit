@@ -10,13 +10,14 @@ The source/destination owner type (organization or user) is determined internall
 ## Command Structure
 
 ```sh
-gh pkg-kit migrate <package-type> <package-name> --to <dest-owner>[/<dest-package-name>] [--from <source-owner>] [flags]
+gh pkg-kit migrate <package-type> <package-name> --dst <dest-owner/repo> [--src <source-owner>] [flags]
 ```
 
 - `<package-type>`: One of `container`, `npm`, `maven`, `rubygems`, `nuget`, `docker`
-- `<package-name>`: Source package name
-- `--from`: Source [host/]owner. If omitted, resolved from the current repository owner.
-- `--to`: Destination [host/]owner[/package-name]. If package name is omitted, the source package name is used. Host is detected by '.' in the first segment.
+- `<package-name>`: Source package name (same name used at destination)
+- `--src`: Source [host/]owner. If omitted, resolved from the current repository owner.
+- `--dst`: Destination [host/]owner/repo. Host is detected by '.' in the first segment. The repo path is used for repository references (e.g., NuGet push URL generation); the package name is always the source package name.
+  - **Note**: Package name change is not supported at this time. The source package name is always used at destination.
 
 ### Subcommands
 
@@ -34,14 +35,16 @@ gh pkg-kit migrate docker ...
 | Flag | Short | Description | Required | Default |
 | ---- | ----- | ----------- | -------- | ------- |
 | `--delete` | | Delete source versions after successful migration | No | `false` |
-| `--dry-run` | | Show what would be migrated without performing the migration | No | `false` |
-| `--from` | | Source [host/]owner | No | Current repository owner |
-| `--latest` | `-n` | Migrate latest N versions (by creation date) | No | |
+| `--dry-run` | `-n` | Show what would be migrated without performing the migration | No | `false` |
+| `--src` | | Source [host/]owner | No | Current repository owner |
+| `--dst` | | Destination [host/]owner/repo (host detected by '.' in first segment) | Yes | |
+| `--latest` | `-l` | Migrate latest N versions (by creation date) | No | |
 | `--rewrite-labels` | | Rewrite OCI image config labels to reflect the destination owner/host (container/docker only, changes image digest) | No | `false` |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
-| `--to` | | Destination [host/]owner[/package-name] | Yes | |
 | `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
 | `--version` | | Migrate specific version(s) by ID (can be specified multiple times) | No | All versions |
+| `--src-token` | | Access token for the source owner (overrides gh auth token for source; fallback: $GH_SRC_TOKEN) | No | |
+| `--dst-token` | | Access token for the destination owner (overrides gh auth token for destination; fallback: $GH_DST_TOKEN) | No | |
 
 ### Version Selection
 
@@ -125,21 +128,24 @@ Ruby gems are stored in the GitHub RubyGems registry (`rubygems.pkg.github.com`)
 
 NuGet packages are stored in the GitHub NuGet registry (`nuget.pkg.github.com`).
 
-- **Source**: `https://nuget.pkg.github.com/<source-owner>/index.json`
-- **Destination**: `https://nuget.pkg.github.com/<dest-owner>/index.json`
-- **Method**: TBD (download .nupkg, push to destination)
+- **Source**: `https://nuget.pkg.github.com/<source-owner>/download/<package-name-lower>/<version>/<package-name-lower>.<version>.nupkg`
+- **Destination**: `https://nuget.pkg.github.com/<dest-owner>/` (PUT with multipart .nupkg)
+- **Method**: Download `.nupkg` via NuGet V3 download API, push via `PUT` with multipart form to destination registry
 - **Version mapping**: Each `PackageVersion.Name` is the NuGet version string.
+- **Authentication**: Uses `BasicAuth` with GitHub PAT (`USERNAME` as username, token as password) per registry host.
+- **GHES Note**: For GHES, the registry URL is `https://<host>/_registry/nuget/<owner>`.
 - **Considerations**:
-  - .nuspec inside .nupkg may reference source-specific metadata.
+  - .nuspec inside .nupkg may reference source-specific metadata (not modified during migration).
+  - The .nupkg file is transferred as-is; internal metadata is not rewritten.
 
 ## Execution Flow
 
-1. **Parse arguments**: Extract source owner, package name, destination owner, optional destination package name.
+1. **Parse arguments**: Extract source owner, package name, destination `owner/repo`.
 2. **Detect owner types**: Call Users API for both source and destination owners to determine org/user type.
 3. **List source versions**: Fetch all versions of the source package using the appropriate API (org or user).
 4. **Apply version filters**: Filter versions by `--version`, `--latest`, `--since`, `--until` flags.
 5. **Dry-run check**: If `--dry-run`, display the list of versions that would be migrated and exit.
-6. **Migrate versions**: For each selected version, perform the package-type-specific migration.
+6. **Migrate versions**: For each selected version, perform the package-type-specific migration using the source package name at destination.
 7. **Delete source** (optional): If `--delete` is set, delete the migrated versions (or entire package if all versions were migrated) from the source.
 8. **Report**: Output a summary of migrated versions (success/failure counts).
 
@@ -162,11 +168,12 @@ cmd/
     npm.go                # migrate npm subcommand (planned)
     maven.go              # migrate maven subcommand (planned)
     rubygems.go           # migrate rubygems subcommand (planned)
-    nuget.go              # migrate nuget subcommand (planned)
+    nuget.go              # migrate nuget subcommand
 
 pkg/
   packages/
     container.go          # Container/docker migration logic (MigrateContainer, auth, version filter)
+    nuget.go              # NuGet migration logic (MigrateNuGet, download/push .nupkg)
 
 go-gh-extension/pkg/gh/
   migrate.go              # Common migration wrapper functions (owner type detection, version filtering)

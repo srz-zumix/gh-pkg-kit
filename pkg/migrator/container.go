@@ -1,12 +1,12 @@
-package packages
+package migrator
 
 import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/cli/go-gh/v2/pkg/auth"
+	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -23,11 +23,9 @@ import (
 // ContainerOptions holds the options for migrating container/docker packages.
 type ContainerOptions struct {
 	PackageType   string
-	SrcHost       string
-	DestHost      string
-	SrcOwner      string
+	Src           repository.Repository
 	SrcPackage    string
-	DestOwner     string
+	Dest          repository.Repository
 	DestPackage   string
 	DeleteFlag    bool
 	DryRun        bool
@@ -40,24 +38,10 @@ type ContainerOptions struct {
 
 // MigrateContainer migrates container/docker packages between owners.
 func MigrateContainer(ctx context.Context, srcClient *gh.GitHubClient, destClient *gh.GitHubClient, opts ContainerOptions) error {
-	// Detect source owner type
-	srcOwnerType, err := gh.DetectOwnerType(ctx, srcClient, opts.SrcOwner)
+	versions, srcOwnerType, err := ListFilteredVersions(ctx, srcClient, opts.Src.Owner, opts.PackageType, opts.SrcPackage, opts.VersionIDs, opts.Latest, opts.Since, opts.Until)
 	if err != nil {
 		return err
 	}
-
-	// List source versions
-	versions, err := gh.ListPackageVersionsByOwnerType(ctx, srcClient, srcOwnerType, opts.SrcOwner, opts.PackageType, opts.SrcPackage)
-	if err != nil {
-		return err
-	}
-
-	// Apply version filters
-	filter, err := BuildVersionFilter(opts.VersionIDs, opts.Latest, opts.Since, opts.Until)
-	if err != nil {
-		return err
-	}
-	versions = gh.FilterVersions(versions, filter)
 
 	if len(versions) == 0 {
 		logger.Info("No versions to migrate")
@@ -65,20 +49,20 @@ func MigrateContainer(ctx context.Context, srcClient *gh.GitHubClient, destClien
 	}
 
 	// OCI image references must use lowercase path components per the OCI Distribution Spec.
-	srcBase := gh.ContainerImageBase(opts.SrcHost, opts.SrcOwner, opts.SrcPackage)
-	destBase := gh.ContainerImageBase(opts.DestHost, opts.DestOwner, opts.DestPackage)
+	srcBase := gh.ContainerImageBase(opts.Src, opts.SrcPackage)
+	dstBase := gh.ContainerImageBase(opts.Dest, opts.DestPackage)
 
 	if opts.DryRun {
 		srcImage := srcBase
-		destImage := destBase
-		logger.Info("Dry run: migration plan", "src", srcImage, "dest", destImage, "versions", len(versions))
+		dstImage := dstBase
+		logger.Info("Dry run: migration plan", "src", srcImage, "dest", dstImage, "versions", len(versions))
 		r := render.NewRenderer(nil)
 		r.RenderPackageVersions(versions, nil)
 		return nil
 	}
 
 	// Get auth keychain for container registries
-	keychain, err := registryKeychain(ctx, opts.SrcHost, srcClient, opts.DestHost, destClient)
+	keychain, err := registryKeychain(ctx, opts.Src.Host, srcClient, opts.Dest.Host, destClient)
 	if err != nil {
 		return fmt.Errorf("failed to get authentication: %w", err)
 	}
@@ -98,10 +82,10 @@ func MigrateContainer(ctx context.Context, srcClient *gh.GitHubClient, destClien
 				continue
 			}
 			srcRef := srcBase + "@" + digest
-			destRef := destBase + "@" + digest
-			logger.Info("Migrating image by digest", "src", srcRef, "dest", destRef)
-			if err := crane.Copy(srcRef, destRef, craneAuth); err != nil {
-				err = withPackageAuthHint(err, opts.SrcHost, opts.DestHost)
+			dstRef := dstBase + "@" + digest
+			logger.Info("Migrating image by digest", "src", srcRef, "dest", dstRef)
+			if err := crane.Copy(srcRef, dstRef, craneAuth); err != nil {
+				err = withPackageAuthHint(err, opts.Src.Host, opts.Dest.Host)
 				logger.Error("Failed to migrate image", "src", srcRef, "error", err)
 				failures = append(failures, fmt.Sprintf("version %d (%s): %v", v.GetID(), v.GetName(), err))
 				continue
@@ -112,10 +96,10 @@ func MigrateContainer(ctx context.Context, srcClient *gh.GitHubClient, destClien
 		tagFailed := false
 		for _, tag := range tags {
 			srcRef := srcBase + ":" + tag
-			destRef := destBase + ":" + tag
-			logger.Info("Migrating image", "src", srcRef, "dest", destRef)
-			if err := copyImage(srcRef, destRef, craneAuth, opts, keychain); err != nil {
-				err = withPackageAuthHint(err, opts.SrcHost, opts.DestHost)
+			dstRef := dstBase + ":" + tag
+			logger.Info("Migrating image", "src", srcRef, "dest", dstRef)
+			if err := copyImage(srcRef, dstRef, craneAuth, opts); err != nil {
+				err = withPackageAuthHint(err, opts.Src.Host, opts.Dest.Host)
 				logger.Error("Failed to migrate image", "src", srcRef, "error", err)
 				failures = append(failures, fmt.Sprintf("version %d tag %s: %v", v.GetID(), tag, err))
 				tagFailed = true
@@ -130,7 +114,7 @@ func MigrateContainer(ctx context.Context, srcClient *gh.GitHubClient, destClien
 	var deleteFailures []string
 	if opts.DeleteFlag && len(migrated) > 0 {
 		for _, vID := range migrated {
-			if err := gh.DeletePackageVersionByOwnerType(ctx, srcClient, srcOwnerType, opts.SrcOwner, opts.PackageType, opts.SrcPackage, vID); err != nil {
+			if err := gh.DeletePackageVersionByOwnerType(ctx, srcClient, srcOwnerType, opts.Src.Owner, opts.PackageType, opts.SrcPackage, vID); err != nil {
 				logger.Error("Failed to delete source version", "version_id", vID, "error", err)
 				deleteFailures = append(deleteFailures, fmt.Sprintf("version %d: %v", vID, err))
 			} else {
@@ -157,16 +141,16 @@ func MigrateContainer(ctx context.Context, srcClient *gh.GitHubClient, destClien
 // copyImage copies an image from srcRef to destRef.
 // When opts.RewriteLabels is true, OCI annotation labels (e.g. org.opencontainers.image.source)
 // are rewritten to reflect the destination owner/host before pushing.
-func copyImage(srcRef, destRef string, craneAuth crane.Option, opts ContainerOptions, keychain authn.Keychain) error {
+func copyImage(srcRef, destRef string, craneAuth crane.Option, opts ContainerOptions) error {
 	if !opts.RewriteLabels {
 		return crane.Copy(srcRef, destRef, craneAuth)
 	}
-	return copyAndRewriteLabels(srcRef, destRef, opts, craneAuth, keychain)
+	return copyAndRewriteLabels(srcRef, destRef, opts, craneAuth)
 }
 
 // copyAndRewriteLabels pulls an image/index from srcRef, rewrites OCI config labels,
 // and pushes the result to destRef.
-func copyAndRewriteLabels(srcRef, destRef string, opts ContainerOptions, craneAuth crane.Option, keychain authn.Keychain) error {
+func copyAndRewriteLabels(srcRef, destRef string, opts ContainerOptions, craneAuth crane.Option) error {
 	src, err := name.ParseReference(srcRef)
 	if err != nil {
 		return fmt.Errorf("failed to parse source reference: %w", err)
@@ -190,7 +174,7 @@ func copyAndRewriteLabels(srcRef, destRef string, opts ContainerOptions, craneAu
 		if err != nil {
 			return err
 		}
-		modified, err := rewriteIndexLabels(idx, opts.SrcHost, opts.SrcOwner, opts.DestHost, opts.DestOwner)
+		modified, err := rewriteIndexLabels(idx, opts.Src.Host, opts.Src.Owner, opts.Dest.Host, opts.Dest.Owner)
 		if err != nil {
 			return err
 		}
@@ -200,7 +184,7 @@ func copyAndRewriteLabels(srcRef, destRef string, opts ContainerOptions, craneAu
 		if err != nil {
 			return err
 		}
-		modified, err := rewriteImageLabels(img, opts.SrcHost, opts.SrcOwner, opts.DestHost, opts.DestOwner)
+		modified, err := rewriteImageLabels(img, opts.Src.Host, opts.Src.Owner, opts.Dest.Host, opts.Dest.Owner)
 		if err != nil {
 			return err
 		}
@@ -304,42 +288,6 @@ func withPackageAuthHint(err error, srcHost, destHost string) error {
 		hints = append(hints, fmt.Sprintf("  %s=<classic-PAT>  # host: %s", envVar, h))
 	}
 	return fmt.Errorf("%w\nhint: container registry auth requires a classic PAT with read:packages/write:packages scope.\nOAuth App tokens may be rejected by GHES container registries.\nSet in .env or environment:\n%s", err, strings.Join(hints, "\n"))
-}
-
-// BuildVersionFilter creates a VersionFilter from flag values.
-func BuildVersionFilter(versionIDs []int64, latest int, since, until string) (gh.VersionFilter, error) {
-	filter := gh.VersionFilter{
-		VersionIDs: versionIDs,
-		Latest:     latest,
-	}
-	if since != "" {
-		t, err := ParseDate(since)
-		if err != nil {
-			return filter, fmt.Errorf("invalid --since value '%s': %w", since, err)
-		}
-		filter.Since = &t
-	}
-	if until != "" {
-		t, err := ParseDate(until)
-		if err != nil {
-			return filter, fmt.Errorf("invalid --until value '%s': %w", until, err)
-		}
-		filter.Until = &t
-	}
-	return filter, nil
-}
-
-// ParseDate parses a date string in RFC3339 or YYYY-MM-DD format.
-func ParseDate(s string) (time.Time, error) {
-	t, err := time.Parse(time.RFC3339, s)
-	if err == nil {
-		return t, nil
-	}
-	t, err = time.Parse("2006-01-02", s)
-	if err == nil {
-		return t, nil
-	}
-	return time.Time{}, fmt.Errorf("expected RFC3339 or YYYY-MM-DD format")
 }
 
 // ghKeychain implements authn.Keychain, resolving credentials per container registry.

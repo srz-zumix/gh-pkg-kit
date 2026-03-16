@@ -13,6 +13,7 @@ func newMigrateCmd() *cobra.Command {
 	}
 	cmd.AddCommand(migrateCmd.NewContainerCmd())
 	cmd.AddCommand(migrateCmd.NewDockerCmd())
+	cmd.AddCommand(migrateCmd.NewNuGetCmd())
 	return cmd
 }
 
