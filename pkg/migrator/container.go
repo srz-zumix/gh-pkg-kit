@@ -3,6 +3,7 @@ package migrator
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/cli/go-gh/v2/pkg/auth"
@@ -259,6 +260,59 @@ func rewriteIndexLabels(idx v1.ImageIndex, srcHost, srcOwner, destHost, destOwne
 	}
 
 	return mutate.AppendManifests(empty.Index, adds...), nil
+}
+
+// PullContainerOptions holds options for pulling a container image to a local file.
+type PullContainerOptions struct {
+	PackageType string
+	Src         repository.Repository
+	SrcPackage  string
+	Tag         string
+	Output      string
+	DryRun      bool
+}
+
+// PullContainerToFile pulls a container image tag from GitHub Packages and saves it as a Docker-loadable tarball.
+func PullContainerToFile(ctx context.Context, client *gh.GitHubClient, opts PullContainerOptions) error {
+	tag := opts.Tag
+	if tag == "" {
+		tag = "latest"
+	}
+	imageBase := gh.ContainerImageBase(opts.Src, opts.SrcPackage)
+	imageRef := imageBase + ":" + tag
+
+	output := opts.Output
+	if output == "" {
+		// Use only the base name of the package to avoid creating unexpected subdirectories.
+		pkgBase := filepath.Base(opts.SrcPackage)
+		output = fmt.Sprintf("%s-%s.tar", pkgBase, tag)
+	}
+
+	if opts.DryRun {
+		logger.Info("Dry run: would pull image", "src", imageRef, "output", output)
+		return nil
+	}
+
+	keychain, err := registryKeychain(ctx, opts.Src.Host, client, opts.Src.Host, client)
+	if err != nil {
+		return fmt.Errorf("failed to get authentication: %w", err)
+	}
+	craneAuth := crane.WithAuthFromKeychain(keychain)
+
+	logger.Info("Pulling image", "src", imageRef)
+	img, err := crane.Pull(imageRef, craneAuth)
+	if err != nil {
+		err = withPackageAuthHint(err, opts.Src.Host, opts.Src.Host)
+		return fmt.Errorf("failed to pull image '%s': %w", imageRef, err)
+	}
+
+	logger.Info("Saving image", "output", output)
+	if err := crane.SaveLegacy(img, imageRef, output); err != nil {
+		return fmt.Errorf("failed to save image to '%s': %w", output, err)
+	}
+
+	logger.Info("Pulled image", "src", imageRef, "to", output)
+	return nil
 }
 
 // withPackageAuthHint wraps DENIED/UNAUTHORIZED container registry errors with a hint.
