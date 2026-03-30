@@ -40,8 +40,15 @@ The source and destination owner types (organization or user) are detected autom
 		RunE: func(cmd *cobra.Command, args []string) error {
 			srcPackage := args[0]
 
-			// Setup repositories and clients
-			clients, err := migrator.SetupClientsAndRepositories(src, dst, srcToken, dstToken)
+			srcRepo, err := parser.Repository(parser.RepositoryOwnerWithHost(src))
+			if err != nil {
+				return fmt.Errorf("failed to resolve source owner: %w", err)
+			}
+			destRepo, err := parser.Repository(parser.RepositoryOwnerOrRepo(dst))
+			if err != nil {
+				return fmt.Errorf("failed to parse destination repository: %w", err)
+			}
+			clients, err := migrator.SetupClients(srcRepo, destRepo, srcToken, dstToken)
 			if err != nil {
 				return err
 			}

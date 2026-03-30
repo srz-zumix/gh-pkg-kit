@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/go-github/v79/github"
 	"github.com/srz-zumix/go-gh-extension/pkg/gh"
 )
 
 // ListFilteredVersions detects the owner type, lists package versions, and applies version filters.
 // Returns the filtered versions and the detected owner type (needed for delete operations).
-func ListFilteredVersions(ctx context.Context, client *gh.GitHubClient, owner, packageType, packageName string, versionIDs []int64, latest int, since, until string) ([]*github.PackageVersion, gh.OwnerType, error) {
+func ListFilteredVersions(ctx context.Context, client *gh.GitHubClient, owner, packageType, packageName string, versionIDs []int64, latest int, since, until string) ([]*PackageVersion, gh.OwnerType, error) {
 	ownerType, err := gh.DetectOwnerType(ctx, client, owner)
 	if err != nil {
 		return nil, ownerType, fmt.Errorf("failed to detect owner type: %w", err)
