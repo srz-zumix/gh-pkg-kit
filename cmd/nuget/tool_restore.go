@@ -85,7 +85,7 @@ Extra arguments after -- are passed through to 'dotnet tool restore'.`,
 					if err != nil {
 						return fmt.Errorf("failed to create temp directory: %w", err)
 					}
-					defer os.RemoveAll(tmpDir)
+					defer func() { _ = os.RemoveAll(tmpDir) }()
 				}
 			}
 
