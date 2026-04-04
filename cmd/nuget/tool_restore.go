@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 	nugetConfig "github.com/srz-zumix/gh-pkg-kit/pkg/nuget"
@@ -17,7 +16,6 @@ import (
 func NewToolRestoreCmd() *cobra.Command {
 	var (
 		configFile string
-		dryRun     bool
 		workDir    string
 		overwrite  bool
 	)
@@ -84,12 +82,7 @@ Extra arguments after -- are passed through to 'dotnet tool restore'.`,
 
 			dotnetArgs = append(dotnetArgs, args...)
 
-			if dryRun {
-				logger.Info("Dry run: would run: dotnet " + strings.Join(dotnetArgs, " "))
-				return nil
-			}
-
-			logger.Info("Running: dotnet " + strings.Join(dotnetArgs, " "))
+			logger.Info("Running: dotnet ", "args", dotnetArgs)
 			dotnetCmd := exec.CommandContext(ctx, "dotnet", dotnetArgs...)
 			dotnetCmd.Stdout = os.Stdout
 			dotnetCmd.Stderr = os.Stderr
@@ -105,7 +98,6 @@ Extra arguments after -- are passed through to 'dotnet tool restore'.`,
 
 	f := cmd.Flags()
 	f.StringVar(&configFile, "configfile", "", "Path to NuGet.Config (auto-detected if not specified)")
-	f.BoolVarP(&dryRun, "dry-run", "n", false, "Show what would be done without running dotnet")
 	f.StringVar(&workDir, "work-dir", "", "Working directory for temporary files (default: a temporary directory under the system temp dir, deleted on exit)")
 	f.BoolVar(&overwrite, "overwrite", false, "Overwrite the existing NuGet.Config with injected credentials instead of using a temporary copy")
 
