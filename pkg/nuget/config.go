@@ -170,6 +170,10 @@ func WriteConfigWithCredentials(srcPath, dstPath string) error {
 		}
 	}
 
+	if len(sourceTokens) == 0 {
+		return fmt.Errorf("no gh auth token found for any GitHub Packages source in NuGet.Config")
+	}
+
 	if cfg.PackageSourceCredentials == nil {
 		cfg.PackageSourceCredentials = &sourceCredentials{}
 	}

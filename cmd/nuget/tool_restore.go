@@ -43,7 +43,13 @@ Extra arguments after -- are passed through to 'dotnet tool restore'.`,
 					if err := os.MkdirAll(workDir, 0700); err != nil {
 						return fmt.Errorf("failed to create work directory: %w", err)
 					}
-					tmpDir = workDir
+					// Use a unique subdirectory under workDir to avoid clobbering
+					// existing files across runs.
+					var err error
+					tmpDir, err = os.MkdirTemp(workDir, "nuget-*")
+					if err != nil {
+						return fmt.Errorf("failed to create temp directory under work directory: %w", err)
+					}
 					logger.Info("Using work directory", "dir", tmpDir)
 				} else {
 					var err error
