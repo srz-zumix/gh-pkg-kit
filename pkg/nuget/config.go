@@ -40,7 +40,8 @@ type credentialSource struct {
 
 type rawSection struct {
 	XMLName xml.Name
-	Content []byte `xml:",innerxml"`
+	Attrs   []xml.Attr `xml:",any,attr"`
+	Content []byte     `xml:",innerxml"`
 }
 
 // ResolveConfigPath returns the path to the NuGet.Config file.
