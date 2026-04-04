@@ -59,6 +59,9 @@ Extra arguments after -- are passed through to 'dotnet tool restore'.`,
 			dotnetArgs := []string{"tool", "restore"}
 
 			nugetConfigPath := nugetConfig.ResolveConfigPath(configFile)
+			if configFile != "" && nugetConfigPath == "" {
+				return fmt.Errorf("config file not found: %s", configFile)
+			}
 			if nugetConfigPath != "" {
 				host, _ := auth.DefaultHost()
 				token, _ := auth.TokenForHost(host)
