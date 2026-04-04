@@ -147,9 +147,18 @@ func WriteConfigWithCredentials(srcPath, dstPath string) error {
 	if cfg.PackageSources != nil {
 		for _, item := range cfg.PackageSources.Items {
 			if item.XMLName.Local == "add" && IsGitHubPackagesURL(item.Value) {
+				key := strings.TrimSpace(item.Key)
+				if key == "" {
+					return fmt.Errorf("invalid GitHub Packages source in NuGet.Config: empty key for URL %q", item.Value)
+				}
+
 				host := gitHubHostFromNuGetURL(item.Value)
-				githubSources = append(githubSources, ghSource{key: item.Key, host: host})
-				githubSourceKeys[item.Key] = true
+				if host == "" {
+					return fmt.Errorf("invalid GitHub Packages source in NuGet.Config: failed to derive GitHub host from URL %q", item.Value)
+				}
+
+				githubSources = append(githubSources, ghSource{key: key, host: host})
+				githubSourceKeys[key] = true
 			}
 		}
 	}
