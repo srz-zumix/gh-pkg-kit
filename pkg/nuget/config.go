@@ -278,8 +278,34 @@ func WriteConfigWithCredentials(srcPath, dstPath string) error {
 	if err := tmp.Close(); err != nil {
 		return fmt.Errorf("failed to close temp NuGet.Config: %w", err)
 	}
-	if err := os.Rename(tmpPath, dstPath); err != nil {
+	if err := replaceFile(tmpPath, dstPath); err != nil {
 		return fmt.Errorf("failed to install NuGet.Config: %w", err)
+	}
+
+	return nil
+}
+
+// replaceFile installs srcPath at dstPath. It first attempts a direct rename
+// and falls back to removing an existing destination before retrying, which
+// makes replacement work on Windows where os.Rename cannot overwrite a file.
+func replaceFile(srcPath, dstPath string) error {
+	if err := os.Rename(srcPath, dstPath); err == nil {
+		return nil
+	} else {
+		if _, statErr := os.Stat(dstPath); statErr != nil {
+			if os.IsNotExist(statErr) {
+				return err
+			}
+			return statErr
+		}
+
+		if removeErr := os.Remove(dstPath); removeErr != nil && !os.IsNotExist(removeErr) {
+			return removeErr
+		}
+
+		if retryErr := os.Rename(srcPath, dstPath); retryErr != nil {
+			return retryErr
+		}
 	}
 
 	return nil
