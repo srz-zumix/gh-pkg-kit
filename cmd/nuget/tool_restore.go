@@ -93,20 +93,28 @@ Extra arguments after -- are passed through to 'dotnet tool restore'.`,
 
 			nugetConfigPath := resolveNuGetConfigPath(configFile)
 			if nugetConfigPath != "" {
-				host, _ := auth.DefaultHost()
-				token, _ := auth.TokenForHost(host)
-				if token != "" {
-					var dstConfig string
-					if overwrite {
-						dstConfig = nugetConfigPath
+				host, err := auth.DefaultHost()
+				if err != nil {
+					logger.Warn("Failed to resolve default GitHub host for NuGet credential injection, using original config", "error", err)
+				} else {
+					token, err := auth.TokenForHost(host)
+					if err != nil {
+						logger.Warn("Failed to retrieve GitHub token for NuGet credential injection, using original config", "host", host, "error", err)
+					} else if token != "" {
+						var dstConfig string
+						if overwrite {
+							dstConfig = nugetConfigPath
+						} else {
+							dstConfig = filepath.Join(tmpDir, "NuGet.Config")
+						}
+						if err := writeNuGetConfigWithCredentials(nugetConfigPath, dstConfig, token); err != nil {
+							logger.Warn("Failed to inject credentials into NuGet.Config, using original", "error", err)
+						} else {
+							logger.Info("Injected gh auth credentials into NuGet.Config", "config", dstConfig)
+							dotnetArgs = append(dotnetArgs, "--configfile", dstConfig)
+						}
 					} else {
-						dstConfig = filepath.Join(tmpDir, "NuGet.Config")
-					}
-					if err := writeNuGetConfigWithCredentials(nugetConfigPath, dstConfig, token); err != nil {
-						logger.Warn("Failed to inject credentials into NuGet.Config, using original", "error", err)
-					} else {
-						logger.Info("Injected gh auth credentials into NuGet.Config", "config", dstConfig)
-						dotnetArgs = append(dotnetArgs, "--configfile", dstConfig)
+						logger.Info("No GitHub token available for NuGet credential injection, using original config", "host", host)
 					}
 				}
 			}
