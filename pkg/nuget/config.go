@@ -85,14 +85,19 @@ func ResolveConfigPath(configFile string) string {
 //   - GHES legacy: /_registry/nuget/ path prefix
 //   - GHES modern: nuget.<host> subdomain
 func IsGitHubPackagesURL(rawURL string) bool {
-	if strings.Contains(rawURL, "nuget.pkg.github.com") || strings.Contains(rawURL, "/_registry/nuget/") {
-		return true
-	}
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return false
 	}
-	return strings.HasPrefix(u.Hostname(), "nuget.")
+
+	host := u.Hostname()
+	if host == "nuget.pkg.github.com" {
+		return true
+	}
+	if strings.HasPrefix(host, "nuget.") {
+		return true
+	}
+	return strings.HasPrefix(u.EscapedPath(), "/_registry/nuget/")
 }
 
 // gitHubHostFromNuGetURL extracts the GitHub authentication host from a
