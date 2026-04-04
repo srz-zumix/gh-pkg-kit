@@ -105,6 +105,7 @@ func IsGitHubPackagesURL(rawURL string) bool {
 // Examples:
 //   - https://nuget.pkg.github.com/<owner>/... → "github.com"
 //   - https://nuget.<ghes-host>/<owner>/...    → "<ghes-host>"
+//   - https://<ghes-host>/_registry/nuget/...  → "<ghes-host>"
 func gitHubHostFromNuGetURL(rawURL string) string {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -116,6 +117,9 @@ func gitHubHostFromNuGetURL(rawURL string) string {
 	}
 	if after, ok := strings.CutPrefix(h, "nuget."); ok {
 		return after
+	}
+	if strings.HasPrefix(u.EscapedPath(), "/_registry/nuget/") {
+		return h
 	}
 	return ""
 }
