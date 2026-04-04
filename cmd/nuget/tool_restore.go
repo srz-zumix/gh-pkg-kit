@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cli/go-gh/v2/pkg/auth"
 	"github.com/spf13/cobra"
 	nugetConfig "github.com/srz-zumix/gh-pkg-kit/pkg/nuget"
 	"github.com/srz-zumix/go-gh-extension/pkg/logger"
@@ -63,21 +62,17 @@ Extra arguments after -- are passed through to 'dotnet tool restore'.`,
 				return fmt.Errorf("config file not found: %s", configFile)
 			}
 			if nugetConfigPath != "" {
-				host, _ := auth.DefaultHost()
-				token, _ := auth.TokenForHost(host)
-				if token != "" {
-					var dstConfig string
-					if overwrite {
-						dstConfig = nugetConfigPath
-					} else {
-						dstConfig = filepath.Join(tmpDir, "NuGet.Config")
-					}
-					if err := nugetConfig.WriteConfigWithCredentials(nugetConfigPath, dstConfig, token); err != nil {
-						logger.Warn("Failed to inject credentials into NuGet.Config, using original", "error", err)
-					} else {
-						logger.Info("Injected gh auth credentials into NuGet.Config", "config", dstConfig)
-						dotnetArgs = append(dotnetArgs, "--configfile", dstConfig)
-					}
+				var dstConfig string
+				if overwrite {
+					dstConfig = nugetConfigPath
+				} else {
+					dstConfig = filepath.Join(tmpDir, "NuGet.Config")
+				}
+				if err := nugetConfig.WriteConfigWithCredentials(nugetConfigPath, dstConfig); err != nil {
+					logger.Warn("Failed to inject credentials into NuGet.Config, using original", "error", err)
+				} else {
+					logger.Info("Injected gh auth credentials into NuGet.Config", "config", dstConfig)
+					dotnetArgs = append(dotnetArgs, "--configfile", dstConfig)
 				}
 			}
 
