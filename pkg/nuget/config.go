@@ -207,17 +207,24 @@ func WriteConfigWithCredentials(srcPath, dstPath string) error {
 	}
 
 	// Add credential entries for sources that had none yet.
-	for key, token := range sourceTokens {
-		if existingCreds[key] {
+	// Iterate in package source order to keep output stable across runs.
+	addedCreds := make(map[string]bool)
+	for _, src := range githubSources {
+		if existingCreds[src.key] || addedCreds[src.key] {
+			continue
+		}
+		token, ok := sourceTokens[src.key]
+		if !ok {
 			continue
 		}
 		cfg.PackageSourceCredentials.Sources = append(cfg.PackageSourceCredentials.Sources, credentialSource{
-			XMLName: xml.Name{Local: key},
+			XMLName: xml.Name{Local: src.key},
 			Items: []addItem{
 				{XMLName: xml.Name{Local: "add"}, Key: "Username", Value: "gh-pkg-kit"},
 				{XMLName: xml.Name{Local: "add"}, Key: "ClearTextPassword", Value: token},
 			},
 		})
+		addedCreds[src.key] = true
 	}
 
 	output, err := xml.MarshalIndent(cfg, "", "  ")
