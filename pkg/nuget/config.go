@@ -25,8 +25,9 @@ type packageSources struct {
 
 type addItem struct {
 	XMLName xml.Name
-	Key     string `xml:"key,attr,omitempty"`
-	Value   string `xml:"value,attr,omitempty"`
+	Key     string     `xml:"key,attr,omitempty"`
+	Value   string     `xml:"value,attr,omitempty"`
+	Attrs   []xml.Attr `xml:",any,attr"`
 }
 
 type sourceCredentials struct {
