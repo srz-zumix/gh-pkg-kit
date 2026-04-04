@@ -135,7 +135,7 @@ Extra arguments after -- are passed through to 'dotnet tool restore'.`,
 	f := cmd.Flags()
 	f.StringVar(&configFile, "configfile", "", "Path to NuGet.Config (auto-detected if not specified)")
 	f.BoolVarP(&dryRun, "dry-run", "n", false, "Show what would be done without running dotnet")
-	f.StringVar(&workDir, "work-dir", "", "Working directory for temporary files (default: system temp dir, not deleted on exit)")
+	f.StringVar(&workDir, "work-dir", "", "Working directory for temporary files (default: a temporary directory under the system temp dir, deleted on exit)")
 	f.BoolVar(&overwrite, "overwrite", false, "Overwrite the existing NuGet.Config with injected credentials instead of using a temporary copy")
 
 	return cmd
