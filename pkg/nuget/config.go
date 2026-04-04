@@ -246,8 +246,40 @@ func WriteConfigWithCredentials(srcPath, dstPath string) error {
 	}
 
 	content := append([]byte(xml.Header), output...)
-	if err := os.WriteFile(dstPath, content, 0600); err != nil {
-		return fmt.Errorf("failed to write NuGet.Config: %w", err)
+
+	// Determine file permissions: preserve existing permissions when overwriting,
+	// otherwise use 0600 for newly created temp copies.
+	perm := os.FileMode(0600)
+	if info, err := os.Stat(dstPath); err == nil {
+		perm = info.Mode().Perm()
+	}
+
+	// Write atomically: write to a temp file in the same directory as dstPath,
+	// then rename into place so a partial write cannot corrupt the destination.
+	dir := filepath.Dir(dstPath)
+	tmp, err := os.CreateTemp(dir, ".nuget-config-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file for NuGet.Config: %w", err)
+	}
+	tmpPath := tmp.Name()
+	defer func() {
+		// Clean up the temp file if it was not successfully renamed.
+		_ = os.Remove(tmpPath)
+	}()
+
+	if err := tmp.Chmod(perm); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("failed to set permissions on temp NuGet.Config: %w", err)
+	}
+	if _, err := tmp.Write(content); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("failed to write temp NuGet.Config: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("failed to close temp NuGet.Config: %w", err)
+	}
+	if err := os.Rename(tmpPath, dstPath); err != nil {
+		return fmt.Errorf("failed to install NuGet.Config: %w", err)
 	}
 
 	return nil
