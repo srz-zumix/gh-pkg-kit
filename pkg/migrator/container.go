@@ -50,7 +50,8 @@ func MigrateContainer(ctx context.Context, srcClient *gh.GitHubClient, destClien
 	}
 
 	// OCI image references must use lowercase path components per the OCI Distribution Spec.
-	srcBase := gh.ContainerImageBase(opts.Src, opts.SrcPackage)
+	// For docker packages, pull from the legacy docker.pkg.github.com registry and push to ghcr.io.
+	srcBase := srcImageBase(opts.PackageType, opts.Src, opts.SrcPackage)
 	dstBase := gh.ContainerImageBase(opts.Dest, opts.DestPackage)
 
 	if opts.DryRun {
@@ -278,7 +279,7 @@ func PullContainerToFile(ctx context.Context, client *gh.GitHubClient, opts Pull
 	if tag == "" {
 		tag = "latest"
 	}
-	imageBase := gh.ContainerImageBase(opts.Src, opts.SrcPackage)
+	imageBase := srcImageBase(opts.PackageType, opts.Src, opts.SrcPackage)
 	imageRef := imageBase + ":" + tag
 
 	output := opts.Output
@@ -313,6 +314,16 @@ func PullContainerToFile(ctx context.Context, client *gh.GitHubClient, opts Pull
 
 	logger.Info("Pulled image", "src", imageRef, "to", output)
 	return nil
+}
+
+// srcImageBase returns the base image reference for a source package.
+// For docker packages, the legacy docker.pkg.github.com registry is used.
+// For all other container-based packages, the standard container registry (ghcr.io) is used.
+func srcImageBase(packageType string, repo repository.Repository, pkg string) string {
+	if packageType == "docker" {
+		return gh.DockerImageBase(repo, pkg)
+	}
+	return gh.ContainerImageBase(repo, pkg)
 }
 
 // withPackageAuthHint wraps DENIED/UNAUTHORIZED container registry errors with a hint.
@@ -379,8 +390,14 @@ func registryKeychain(ctx context.Context, srcHost string, srcG *gh.GitHubClient
 		return nil, fmt.Errorf("failed to get GitHub username for host '%s': %w", srcHost, err)
 	}
 	kc := &ghKeychain{
-		registryToHost:  map[string]string{gh.ContainerRegistry(srcHost): srcHost},
-		registryToLogin: map[string]string{gh.ContainerRegistry(srcHost): srcUser.GetLogin()},
+		registryToHost: map[string]string{
+			gh.ContainerRegistry(srcHost): srcHost,
+			gh.DockerRegistry(srcHost):    srcHost,
+		},
+		registryToLogin: map[string]string{
+			gh.ContainerRegistry(srcHost): srcUser.GetLogin(),
+			gh.DockerRegistry(srcHost):    srcUser.GetLogin(),
+		},
 	}
 	if srcHost != destHost {
 		destToken, _ := auth.TokenForHost(destHost)
@@ -392,7 +409,9 @@ func registryKeychain(ctx context.Context, srcHost string, srcG *gh.GitHubClient
 			return nil, fmt.Errorf("failed to get GitHub username for host '%s': %w", destHost, err)
 		}
 		kc.registryToHost[gh.ContainerRegistry(destHost)] = destHost
+		kc.registryToHost[gh.DockerRegistry(destHost)] = destHost
 		kc.registryToLogin[gh.ContainerRegistry(destHost)] = destUser.GetLogin()
+		kc.registryToLogin[gh.DockerRegistry(destHost)] = destUser.GetLogin()
 	}
 	return kc, nil
 }

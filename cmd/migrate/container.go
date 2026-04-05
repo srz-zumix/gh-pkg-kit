@@ -10,11 +10,12 @@ import (
 
 // NewContainerCmd creates a command to migrate container packages between owners
 func NewContainerCmd() *cobra.Command {
-	return newContainerMigrateCmd("container")
+	return newContainerMigrateCmd("container", false)
 }
 
 // newContainerMigrateCmd creates a migrate command for the given container-based package type.
-func newContainerMigrateCmd(packageType string) *cobra.Command {
+// When requireRepo is true, --src must include the repository name ([HOST/]OWNER/REPO).
+func newContainerMigrateCmd(packageType string, requireRepo bool) *cobra.Command {
 	var (
 		src           string
 		dst           string
@@ -40,9 +41,18 @@ The source and destination owner types (organization or user) are detected autom
 		RunE: func(cmd *cobra.Command, args []string) error {
 			srcPackage := args[0]
 
-			srcRepo, err := parser.Repository(parser.RepositoryOwnerWithHost(src))
+			var srcParseOpt parser.RepositoryOption
+			if requireRepo {
+				srcParseOpt = parser.RepositoryOwnerOrRepo(src)
+			} else {
+				srcParseOpt = parser.RepositoryOwnerWithHost(src)
+			}
+			srcRepo, err := parser.Repository(srcParseOpt)
 			if err != nil {
 				return fmt.Errorf("failed to resolve source owner: %w", err)
+			}
+			if requireRepo && srcRepo.Name == "" {
+				return fmt.Errorf("--src must include the repository name ([HOST/]OWNER/REPO) for %s packages", packageType)
 			}
 			destRepo, err := parser.Repository(parser.RepositoryOwnerOrRepo(dst))
 			if err != nil {
@@ -73,7 +83,11 @@ The source and destination owner types (organization or user) are detected autom
 	}
 
 	f := cmd.Flags()
-	f.StringVarP(&src, "src", "s", "", "Source [host/]owner (default: current repository owner)")
+	srcDesc := "Source [host/]owner (default: current repository owner)"
+	if requireRepo {
+		srcDesc = "Source [host/]owner/repo (repository name is required)"
+	}
+	f.StringVarP(&src, "src", "s", "", srcDesc)
 	f.StringVarP(&dst, "dst", "d", "", "Destination [host/]owner/[repo]")
 	_ = cmd.MarkFlagRequired("dst")
 	f.StringVar(&srcToken, "src-token", "", "Access token for the source owner (overrides gh auth token for source; fallback: $GH_SRC_TOKEN)")
