@@ -6,5 +6,5 @@ import (
 
 // NewDockerCmd creates a command to migrate docker packages between owners
 func NewDockerCmd() *cobra.Command {
-	return newContainerMigrateCmd("docker")
+	return newContainerMigrateCmd("docker", true)
 }

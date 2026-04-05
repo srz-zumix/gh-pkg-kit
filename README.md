@@ -195,12 +195,12 @@ Package name change is not supported; the source package name is always used at 
 ### migrate docker
 
 ```sh
-gh pkg-kit migrate docker <package-name> --dst <dest-owner/repo> [--src <source-owner>] [flags]
+gh pkg-kit migrate docker <package-name> --dst <dest-owner/repo> --src <source-owner/repo> [flags]
 ```
 
-Migrates docker packages from one owner to another within GitHub Packages.
+Migrates docker packages from the legacy `docker.pkg.github.com` registry to `ghcr.io` within GitHub Packages.
 Uses the OCI Distribution API to copy image manifests and blobs, including multi-architecture images.
-The source owner is resolved from the current repository if `--src` is not specified.
+The repository name is required in `--src` because the legacy Docker Package Registry image path includes the owner and repository (`docker.pkg.github.com/OWNER/REPO/PACKAGE`).
 The source and destination owner types (organization or user) are detected automatically.
 Package name change is not supported; the source package name is always used at destination.
 
@@ -213,7 +213,7 @@ Package name change is not supported; the source package name is always used at 
 | `--latest` | `-l` | Migrate latest N versions (by creation date) | No | |
 | `--rewrite-labels` | | Rewrite OCI image config labels to reflect destination owner/host (changes image digest) | No | `false` |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
-| `--src` | | Source [host/]owner | No | Current repository owner |
+| `--src` | | Source [host/]owner/repo (repository name is required) | Yes | |
 | `--src-token` | | Access token for source owner (fallback: `$GH_SRC_TOKEN`) | No | |
 | `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
 | `--version` | | Migrate specific version(s) by ID (can be specified multiple times) | No | All versions |
@@ -242,6 +242,34 @@ Package name change is not supported; the source package name is always used at 
 | `--src-token` | | Access token for source owner (fallback: `$GH_SRC_TOKEN`) | No | |
 | `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
 | `--version` | | Migrate specific version(s) by ID (can be specified multiple times) | No | All versions |
+
+## nuget
+
+### nuget tool-restore
+
+```sh
+gh pkg-kit nuget tool-restore [--owner <owner>] [--tool-manifest <path>] [--configfile <path>] [--dry-run] [-- dotnet-tool-restore-args...]
+```
+
+Downloads .nupkg tool packages from GitHub Packages using the gh auth token,
+then runs `dotnet tool restore` with the downloaded packages as a local source.
+This avoids the need to configure GitHub Packages credentials in nuget.config.
+
+If a NuGet.Config file is found (via `--configfile` or auto-detected), a temporary
+copy is created with GitHub Packages credentials filled in using the gh auth token.
+This resolves parse errors caused by incomplete credential entries in nuget.config.
+
+The tool manifest defaults to `.config/dotnet-tools.json`.
+Packages that are not found on GitHub Packages are silently skipped,
+allowing dotnet to resolve them from other configured NuGet sources.
+Extra arguments after `--` are passed through to `dotnet tool restore`.
+
+| Flag | Short | Description | Required | Default |
+| ---- | ----- | ----------- | -------- | ------- |
+| `--configfile` | | Path to NuGet.Config (auto-detected if not specified) | No | Auto-detect |
+| `--dry-run` | `-n` | Show what would be done without downloading or running dotnet | No | `false` |
+| `--owner` | `-o` | Owner name | No | Current repository owner |
+| `--tool-manifest` | | Path to the dotnet tool manifest | No | `.config/dotnet-tools.json` |
 
 ## user
 
