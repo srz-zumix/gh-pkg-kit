@@ -29,7 +29,7 @@ The output file defaults to <package-name>.<version>.nupkg in the current direct
 		RunE: func(cmd *cobra.Command, args []string) error {
 			packageName := args[0]
 
-			repo, err := parser.Repository(parser.RepositoryOwner(owner))
+			repo, err := parser.Repository(parser.RepositoryOwnerWithHost(owner))
 			if err != nil {
 				return fmt.Errorf("failed to resolve owner: %w", err)
 			}
@@ -72,7 +72,7 @@ The output file defaults to <package-name>.<version>.nupkg in the current direct
 	}
 
 	f := cmd.Flags()
-	f.StringVarP(&owner, "owner", "o", "", "Owner name (defaults to current repository owner)")
+	f.StringVarP(&owner, "owner", "o", "", "[HOST/]OWNER (defaults to current repository owner)")
 	f.StringVar(&version, "version", "", "Package version to download (defaults to latest)")
 	f.StringVar(&output, "output", "", "Output file path (default: <package-name>.<version>.nupkg)")
 
