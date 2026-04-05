@@ -53,14 +53,15 @@ testdata-rubygems-pack: ## Build the sample RubyGems package (.gem)
 	cd $(RUBYGEMS_TESTDATA_DIR) && gem build sample-rubygems-pkg.gemspec
 
 testdata-rubygems-publish: testdata-rubygems-pack ## Build and publish the sample RubyGems package to GitHub Packages
-	@mkdir -p $(HOME)/.local/share/gem
-	@printf -- "---\n:github: Bearer $(GITHUB_TOKEN)\n" > $(HOME)/.local/share/gem/credentials
-	@chmod 0600 $(HOME)/.local/share/gem/credentials
-	cd $(RUBYGEMS_TESTDATA_DIR) && gem push \
-		--key github \
-		--host https://rubygems.pkg.github.com/$(GITHUB_OWNER) \
-		sample-rubygems-pkg-*.gem; \
-		EXIT=$$?; rm -f $(HOME)/.local/share/gem/credentials; exit $$EXIT
+	@TMP_HOME=$$(mktemp -d); \
+		trap 'rm -rf "$$TMP_HOME"' EXIT INT TERM; \
+		mkdir -p "$$TMP_HOME/.local/share/gem"; \
+		printf -- "---\n:github: Bearer $(GITHUB_TOKEN)\n" > "$$TMP_HOME/.local/share/gem/credentials"; \
+		chmod 0600 "$$TMP_HOME/.local/share/gem/credentials"; \
+		cd $(RUBYGEMS_TESTDATA_DIR) && HOME="$$TMP_HOME" gem push \
+			--key github \
+			--host https://rubygems.pkg.github.com/$(GITHUB_OWNER) \
+			sample-rubygems-pkg-*.gem
 
 testdata-maven-pack: ## Build the sample Maven package (.jar)
 	cd $(MAVEN_TESTDATA_DIR) && mvn package -s settings.xml
