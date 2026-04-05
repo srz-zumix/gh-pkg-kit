@@ -47,7 +47,14 @@ testdata-nuget-publish: testdata-nuget-pack ## Build and publish the sample NuGe
 		--api-key "$(GITHUB_TOKEN)"
 
 testdata-npm-publish: ## Publish the sample npm package to GitHub Packages
-	cd $(NPM_TESTDATA_DIR) && GITHUB_OWNER=$(GITHUB_OWNER) GITHUB_TOKEN=$(GITHUB_TOKEN) npm publish
+	cd $(NPM_TESTDATA_DIR) && \
+		PACKAGE_NAME=$$(node -p "require('./package.json').name") && \
+		PACKAGE_SCOPE=$$(printf '%s\n' "$$PACKAGE_NAME" | sed -n 's/^@\([^/]*\)\/.*$$/\1/p') && \
+		if [ -n "$$PACKAGE_SCOPE" ] && [ "$$PACKAGE_SCOPE" != "$(GITHUB_OWNER)" ]; then \
+			printf '%s\n' "Error: package scope '$$PACKAGE_SCOPE' does not match GITHUB_OWNER '$(GITHUB_OWNER)'" >&2; \
+			exit 1; \
+		fi && \
+		GITHUB_OWNER=$(GITHUB_OWNER) GITHUB_TOKEN=$(GITHUB_TOKEN) npm publish
 
 testdata-rubygems-pack: ## Build the sample RubyGems package (.gem)
 	cd $(RUBYGEMS_TESTDATA_DIR) && gem build sample-rubygems-pkg.gemspec
