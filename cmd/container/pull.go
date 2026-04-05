@@ -1,25 +1,22 @@
-package docker
+package container
 
 import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	containerCmd "github.com/srz-zumix/gh-pkg-kit/cmd/container"
 	"github.com/srz-zumix/gh-pkg-kit/pkg/migrator"
 	"github.com/srz-zumix/go-gh-extension/pkg/gh"
 	"github.com/srz-zumix/go-gh-extension/pkg/parser"
 )
 
-// NewPullCmd creates a command to pull a docker image from the legacy Docker Package Registry to a local tarball.
-// --owner requires [host/]owner/repo because the legacy registry image path includes the repository name.
+// NewPullCmd creates a command to pull a container image from ghcr.io to a local tarball.
 func NewPullCmd() *cobra.Command {
-	return containerCmd.NewPullCmdFor("docker", true)
+	return NewPullCmdFor("container", false)
 }
 
-
-// newContainerPullCmd creates a pull command for the given container-based package type.
+// NewPullCmdFor creates a pull command for the given container-based package type.
 // When requireRepo is true, --owner must include the repository name ([host/]owner/repo).
-func newContainerPullCmd(packageType string, requireRepo bool) *cobra.Command {
+func NewPullCmdFor(packageType string, requireRepo bool) *cobra.Command {
 	var (
 		owner  string
 		tag    string
