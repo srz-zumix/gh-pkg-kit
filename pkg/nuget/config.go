@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/cli/go-gh/v2/pkg/auth"
+	"github.com/srz-zumix/go-gh-extension/pkg/ioutil"
 )
 
 // configuration represents the XML structure of a NuGet.Config file.
@@ -124,6 +125,63 @@ func gitHubHostFromNuGetURL(rawURL string) string {
 	return ""
 }
 
+// isXMLNCNameStart reports whether r is a valid first character of an XML NCName
+// (XML 1.0 spec, §2.3, excluding ':').
+func isXMLNCNameStart(r rune) bool {
+	return r == '_' ||
+		(r >= 'A' && r <= 'Z') ||
+		(r >= 'a' && r <= 'z') ||
+		(r >= 0xC0 && r <= 0xD6) ||
+		(r >= 0xD8 && r <= 0xF6) ||
+		(r >= 0xF8 && r <= 0x2FF) ||
+		(r >= 0x370 && r <= 0x37D) ||
+		(r >= 0x37F && r <= 0x1FFF) ||
+		(r >= 0x200C && r <= 0x200D) ||
+		(r >= 0x2070 && r <= 0x218F) ||
+		(r >= 0x2C00 && r <= 0x2FEF) ||
+		(r >= 0x3001 && r <= 0xD7FF) ||
+		(r >= 0xF900 && r <= 0xFDCF) ||
+		(r >= 0xFDF0 && r <= 0xFFFD) ||
+		(r >= 0x10000 && r <= 0xEFFFF)
+}
+
+// isXMLNCNameChar reports whether r is valid anywhere in an XML NCName
+// (XML 1.0 spec, §2.3, excluding ':').
+func isXMLNCNameChar(r rune) bool {
+	return isXMLNCNameStart(r) ||
+		r == '-' || r == '.' ||
+		(r >= '0' && r <= '9') ||
+		r == 0xB7 ||
+		(r >= 0x0300 && r <= 0x036F) ||
+		(r >= 0x203F && r <= 0x2040)
+}
+
+// nugetEncodeSourceKey encodes a NuGet source key to a valid XML NCName,
+// matching .NET's XmlConvert.EncodeName. Characters invalid in XML NCNames are
+// replaced with _xHHHH_ (upper-hex, zero-padded to 4 digits). An underscore
+// immediately followed by 'x' is also escaped (_x005F_) to prevent ambiguity
+// with the encoding scheme itself.
+func nugetEncodeSourceKey(key string) string {
+	if key == "" {
+		return key
+	}
+	runes := []rune(key)
+	var b strings.Builder
+	for i, r := range runes {
+		if (i == 0 && !isXMLNCNameStart(r)) || (i > 0 && !isXMLNCNameChar(r)) {
+			fmt.Fprintf(&b, "_x%04X_", r)
+			continue
+		}
+		// Escape '_x' to prevent collision with the _xHHHH_ encoding scheme.
+		if r == '_' && i+1 < len(runes) && runes[i+1] == 'x' {
+			b.WriteString("_x005F_")
+			continue
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
 // WriteConfigWithCredentials reads the NuGet.Config at srcPath, injects
 // GitHub Packages credentials by looking up the gh auth token for each
 // source's host, and writes the result to dstPath.
@@ -141,7 +199,8 @@ func WriteConfigWithCredentials(srcPath, dstPath string) error {
 	}
 
 	// Collect source keys and their auth hosts for GitHub Packages sources.
-	type ghSource struct{ key, host string }
+	// encodedKey is the XML NCName-safe encoding of key used in credential sections.
+	type ghSource struct{ key, encodedKey, host string }
 	var githubSources []ghSource
 	githubSourceKeys := make(map[string]bool)
 	if cfg.PackageSources != nil {
@@ -157,8 +216,9 @@ func WriteConfigWithCredentials(srcPath, dstPath string) error {
 					return fmt.Errorf("invalid GitHub Packages source in NuGet.Config: failed to derive GitHub host from URL %q", item.Value)
 				}
 
-				githubSources = append(githubSources, ghSource{key: key, host: host})
-				githubSourceKeys[key] = true
+				encodedKey := nugetEncodeSourceKey(key)
+				githubSources = append(githubSources, ghSource{key: key, encodedKey: encodedKey, host: host})
+				githubSourceKeys[encodedKey] = true
 			}
 		}
 	}
@@ -167,15 +227,17 @@ func WriteConfigWithCredentials(srcPath, dstPath string) error {
 		return fmt.Errorf("no GitHub Packages sources found in NuGet.Config")
 	}
 
-	// Build a map from source key to token, looking up per host.
+	// Build a map from encoded source key to token, looking up per host.
+	// sourceTokens is keyed by the XML-encoded form because that is what NuGet
+	// writes into <packageSourceCredentials> element names.
 	sourceTokens := make(map[string]string)
 	for _, src := range githubSources {
-		if _, seen := sourceTokens[src.key]; seen {
+		if _, seen := sourceTokens[src.encodedKey]; seen {
 			continue
 		}
 		token, _ := auth.TokenForHost(src.host)
 		if token != "" {
-			sourceTokens[src.key] = token
+			sourceTokens[src.encodedKey] = token
 		}
 	}
 
@@ -223,21 +285,21 @@ func WriteConfigWithCredentials(srcPath, dstPath string) error {
 	// Iterate in package source order to keep output stable across runs.
 	addedCreds := make(map[string]bool)
 	for _, src := range githubSources {
-		if existingCreds[src.key] || addedCreds[src.key] {
+		if existingCreds[src.encodedKey] || addedCreds[src.encodedKey] {
 			continue
 		}
-		token, ok := sourceTokens[src.key]
+		token, ok := sourceTokens[src.encodedKey]
 		if !ok {
 			continue
 		}
 		cfg.PackageSourceCredentials.Sources = append(cfg.PackageSourceCredentials.Sources, credentialSource{
-			XMLName: xml.Name{Local: src.key},
+			XMLName: xml.Name{Local: src.encodedKey},
 			Items: []addItem{
 				{XMLName: xml.Name{Local: "add"}, Key: "Username", Value: "gh-pkg-kit"},
 				{XMLName: xml.Name{Local: "add"}, Key: "ClearTextPassword", Value: token},
 			},
 		})
-		addedCreds[src.key] = true
+		addedCreds[src.encodedKey] = true
 	}
 
 	output, err := xml.MarshalIndent(cfg, "", "  ")
@@ -247,65 +309,8 @@ func WriteConfigWithCredentials(srcPath, dstPath string) error {
 
 	content := append([]byte(xml.Header), output...)
 
-	// Determine file permissions: preserve existing permissions when overwriting,
-	// otherwise use 0600 for newly created temp copies.
-	perm := os.FileMode(0600)
-	if info, err := os.Stat(dstPath); err == nil {
-		perm = info.Mode().Perm()
-	}
-
-	// Write atomically: write to a temp file in the same directory as dstPath,
-	// then rename into place so a partial write cannot corrupt the destination.
-	dir := filepath.Dir(dstPath)
-	tmp, err := os.CreateTemp(dir, ".nuget-config-*")
-	if err != nil {
-		return fmt.Errorf("failed to create temp file for NuGet.Config: %w", err)
-	}
-	tmpPath := tmp.Name()
-	defer func() {
-		// Clean up the temp file if it was not successfully renamed.
-		_ = os.Remove(tmpPath)
-	}()
-
-	if err := tmp.Chmod(perm); err != nil {
-		_ = tmp.Close()
-		return fmt.Errorf("failed to set permissions on temp NuGet.Config: %w", err)
-	}
-	if _, err := tmp.Write(content); err != nil {
-		_ = tmp.Close()
-		return fmt.Errorf("failed to write temp NuGet.Config: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("failed to close temp NuGet.Config: %w", err)
-	}
-	if err := replaceFile(tmpPath, dstPath); err != nil {
-		return fmt.Errorf("failed to install NuGet.Config: %w", err)
-	}
-
-	return nil
-}
-
-// replaceFile installs srcPath at dstPath. It first attempts a direct rename
-// and falls back to removing an existing destination before retrying, which
-// makes replacement work on Windows where os.Rename cannot overwrite a file.
-func replaceFile(srcPath, dstPath string) error {
-	if err := os.Rename(srcPath, dstPath); err == nil {
-		return nil
-	} else {
-		if _, statErr := os.Stat(dstPath); statErr != nil {
-			if os.IsNotExist(statErr) {
-				return err
-			}
-			return statErr
-		}
-
-		if removeErr := os.Remove(dstPath); removeErr != nil && !os.IsNotExist(removeErr) {
-			return removeErr
-		}
-
-		if retryErr := os.Rename(srcPath, dstPath); retryErr != nil {
-			return retryErr
-		}
+	if err := ioutil.WriteFileAtomic(dstPath, content, 0600); err != nil {
+		return fmt.Errorf("failed to write NuGet.Config: %w", err)
 	}
 
 	return nil
