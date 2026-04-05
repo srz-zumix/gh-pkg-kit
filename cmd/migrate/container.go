@@ -49,6 +49,9 @@ The source and destination owner types (organization or user) are detected autom
 			}
 			srcRepo, err := parser.Repository(srcParseOpt)
 			if err != nil {
+				if requireRepo {
+					return fmt.Errorf("failed to resolve source repository: %w", err)
+				}
 				return fmt.Errorf("failed to resolve source owner: %w", err)
 			}
 			if requireRepo && srcRepo.Name == "" {
