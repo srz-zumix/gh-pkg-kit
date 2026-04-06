@@ -1,0 +1,19 @@
+{
+  "name": "@srz-zumix/sample-npm-pkg",
+  "version": "1.0.0",
+  "description": "Sample npm package for gh-pkg-kit integration testing.",
+  "main": "index.js",
+  "keywords": [
+    "test",
+    "sample"
+  ],
+  "author": "srz-zumix",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/srz-zumix/gh-pkg-kit"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}
