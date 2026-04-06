@@ -4,6 +4,7 @@ import (
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/spf13/cobra"
 	"github.com/srz-zumix/go-gh-extension/pkg/gh"
+	"github.com/srz-zumix/go-gh-extension/pkg/parser"
 	"github.com/srz-zumix/go-gh-extension/pkg/render"
 )
 
@@ -23,11 +24,15 @@ func NewListCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			g, err := gh.NewGitHubClient()
+			repo, err := parser.Repository(parser.RepositoryOwnerWithHost(owner))
 			if err != nil {
 				return err
 			}
-			packages, err := gh.ListUserPackages(ctx, g, owner, packageType, visibility)
+			g, err := gh.NewGitHubClientWithRepo(repo)
+			if err != nil {
+				return err
+			}
+			packages, err := gh.ListUserPackages(ctx, g, repo.Owner, packageType, visibility)
 			if err != nil {
 				return err
 			}
@@ -37,7 +42,7 @@ func NewListCmd() *cobra.Command {
 		},
 	}
 	f := cmd.Flags()
-	f.StringVarP(&owner, "owner", "o", "", "Owner name (defaults to authenticated user)")
+	f.StringVarP(&owner, "owner", "o", "", "Owner ([HOST/]OWNER, defaults to authenticated user)")
 	cmdutil.StringEnumFlag(cmd, &packageType, "type", "T", "", gh.PackageTypes, "Package type")
 	cmdutil.StringEnumFlag(cmd, &visibility, "visibility", "V", "", gh.PackageVisibilityList, "Package visibility")
 	cmdutil.AddFormatFlags(cmd, &exporter)

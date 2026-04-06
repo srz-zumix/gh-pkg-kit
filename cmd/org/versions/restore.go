@@ -31,7 +31,7 @@ The package must have been deleted within the last 30 days, and the same package
 				return fmt.Errorf("invalid version ID '%s': %w", args[1], err)
 			}
 			ctx := cmd.Context()
-			repo, err := parser.Repository(parser.RepositoryOwner(owner))
+			repo, err := parser.Repository(parser.RepositoryOwnerWithHost(owner))
 			if err != nil {
 				return err
 			}
@@ -48,7 +48,7 @@ The package must have been deleted within the last 30 days, and the same package
 		},
 	}
 	f := cmd.Flags()
-	f.StringVarP(&owner, "owner", "o", "", "Owner name (defaults to current repository owner)")
+	f.StringVarP(&owner, "owner", "o", "", "Owner ([HOST/]OWNER, defaults to current repository owner)")
 	cmdutil.StringEnumFlag(cmd, &packageType, "type", "T", "", gh.PackageTypes, "Package type")
 	_ = cmd.MarkFlagRequired("type")
 	return cmd

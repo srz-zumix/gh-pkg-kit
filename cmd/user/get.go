@@ -4,6 +4,7 @@ import (
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/spf13/cobra"
 	"github.com/srz-zumix/go-gh-extension/pkg/gh"
+	"github.com/srz-zumix/go-gh-extension/pkg/parser"
 	"github.com/srz-zumix/go-gh-extension/pkg/render"
 )
 
@@ -23,11 +24,15 @@ func NewGetCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			packageName := args[0]
 			ctx := cmd.Context()
-			g, err := gh.NewGitHubClient()
+			repo, err := parser.Repository(parser.RepositoryOwnerWithHost(owner))
 			if err != nil {
 				return err
 			}
-			pkg, err := gh.GetUserPackage(ctx, g, owner, packageType, packageName)
+			g, err := gh.NewGitHubClientWithRepo(repo)
+			if err != nil {
+				return err
+			}
+			pkg, err := gh.GetUserPackage(ctx, g, repo.Owner, packageType, packageName)
 			if err != nil {
 				return err
 			}
@@ -37,7 +42,7 @@ func NewGetCmd() *cobra.Command {
 		},
 	}
 	f := cmd.Flags()
-	f.StringVarP(&owner, "owner", "o", "", "Owner name (defaults to authenticated user)")
+	f.StringVarP(&owner, "owner", "o", "", "Owner ([HOST/]OWNER, defaults to authenticated user)")
 	cmdutil.StringEnumFlag(cmd, &packageType, "type", "T", "", gh.PackageTypes, "Package type")
 	_ = cmd.MarkFlagRequired("type")
 	cmdutil.AddFormatFlags(cmd, &exporter)

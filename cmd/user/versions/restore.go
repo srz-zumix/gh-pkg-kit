@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/srz-zumix/go-gh-extension/pkg/gh"
 	"github.com/srz-zumix/go-gh-extension/pkg/logger"
+	"github.com/srz-zumix/go-gh-extension/pkg/parser"
 )
 
 // NewRestoreCmd creates a command to restore a package version for a user
@@ -30,20 +31,24 @@ The package must have been deleted within the last 30 days, and the same package
 				return fmt.Errorf("invalid version ID '%s': %w", args[1], err)
 			}
 			ctx := cmd.Context()
-			g, err := gh.NewGitHubClient()
+			repo, err := parser.Repository(parser.RepositoryOwnerWithHost(owner))
 			if err != nil {
 				return err
 			}
-			err = gh.RestoreUserPackageVersion(ctx, g, owner, packageType, packageName, versionID)
+			g, err := gh.NewGitHubClientWithRepo(repo)
 			if err != nil {
 				return err
 			}
-			logger.Info("Version restored", "version", versionID, "package", packageName, "user", owner)
+			err = gh.RestoreUserPackageVersion(ctx, g, repo.Owner, packageType, packageName, versionID)
+			if err != nil {
+				return err
+			}
+			logger.Info("Version restored", "version", versionID, "package", packageName, "user", repo.Owner)
 			return nil
 		},
 	}
 	f := cmd.Flags()
-	f.StringVarP(&owner, "owner", "o", "", "Owner name (defaults to authenticated user)")
+	f.StringVarP(&owner, "owner", "o", "", "Owner ([HOST/]OWNER, defaults to authenticated user)")
 	cmdutil.StringEnumFlag(cmd, &packageType, "type", "T", "", gh.PackageTypes, "Package type")
 	_ = cmd.MarkFlagRequired("type")
 	return cmd

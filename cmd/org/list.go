@@ -24,7 +24,7 @@ func NewListCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			repo, err := parser.Repository(parser.RepositoryOwner(owner))
+			repo, err := parser.Repository(parser.RepositoryOwnerWithHost(owner))
 			if err != nil {
 				return err
 			}
@@ -42,7 +42,7 @@ func NewListCmd() *cobra.Command {
 		},
 	}
 	f := cmd.Flags()
-	f.StringVarP(&owner, "owner", "o", "", "Owner name (defaults to current repository owner)")
+	f.StringVarP(&owner, "owner", "o", "", "Owner ([HOST/]OWNER, defaults to current repository owner)")
 	cmdutil.StringEnumFlag(cmd, &packageType, "type", "T", "", gh.PackageTypes, "Package type")
 	cmdutil.StringEnumFlag(cmd, &visibility, "visibility", "V", "", gh.PackageVisibilityList, "Package visibility")
 	cmdutil.AddFormatFlags(cmd, &exporter)

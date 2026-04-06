@@ -31,7 +31,7 @@ func NewGetCmd() *cobra.Command {
 				return fmt.Errorf("invalid version ID '%s': %w", args[1], err)
 			}
 			ctx := cmd.Context()
-			repo, err := parser.Repository(parser.RepositoryOwner(owner))
+			repo, err := parser.Repository(parser.RepositoryOwnerWithHost(owner))
 			if err != nil {
 				return err
 			}
@@ -49,7 +49,7 @@ func NewGetCmd() *cobra.Command {
 		},
 	}
 	f := cmd.Flags()
-	f.StringVarP(&owner, "owner", "o", "", "Owner name (defaults to current repository owner)")
+	f.StringVarP(&owner, "owner", "o", "", "Owner ([HOST/]OWNER, defaults to current repository owner)")
 	cmdutil.StringEnumFlag(cmd, &packageType, "type", "T", "", gh.PackageTypes, "Package type")
 	_ = cmd.MarkFlagRequired("type")
 	cmdutil.AddFormatFlags(cmd, &exporter)
