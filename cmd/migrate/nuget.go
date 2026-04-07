@@ -126,7 +126,7 @@ The source and destination owner types (organization or user) are detected autom
 
 				pushErr := gh.PushNuGetPackage(ctx, clients.DestClient, clients.DestRepo, rewritten)
 
-				// On conflict (409), retry after deleting the existing destination version when --force is set.
+				// On conflict (409), retry after deleting the existing destination version when --overwrite is set.
 				if pushErr != nil && overwrite && gh.IsNuGetConflictError(pushErr) {
 					logger.Info("Version already exists at destination, overwriting", "version", versionName)
 					// Detect destination owner type lazily.
