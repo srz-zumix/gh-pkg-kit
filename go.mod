@@ -3,6 +3,7 @@ module github.com/srz-zumix/gh-pkg-kit
 go 1.26.1
 
 require (
+	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/cli/cli/v2 v2.88.1
 	github.com/cli/go-gh/v2 v2.13.0
 	github.com/google/go-containerregistry v0.21.3
@@ -16,7 +17,6 @@ require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/AlecAivazis/survey/v2 v2.3.7 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/Masterminds/sprig/v3 v3.3.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
