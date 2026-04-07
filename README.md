@@ -169,7 +169,7 @@ The package must have been deleted within the last 30 days, and the same package
 ### migrate container
 
 ```sh
-gh pkg-kit migrate container <package-name> --dst <dest-owner/repo> [--src <source-owner>] [flags]
+gh pkg-kit migrate container <package-name> --dst <dest-owner[/repo]> [--src <source-owner>] [flags]
 ```
 
 Migrates container packages from one owner to another within GitHub Packages.
@@ -181,13 +181,13 @@ Package name change is not supported; the source package name is always used at 
 | Flag | Short | Description | Required | Default |
 | ---- | ----- | ----------- | -------- | ------- |
 | `--delete` | | Delete source versions after successful migration | No | `false` |
-| `--dst` | | Destination [host/]owner/repo | Yes | |
+| `--dst` | `-d` | Destination [host/]owner[/repo] | Yes | |
 | `--dst-token` | | Access token for destination owner (fallback: `$GH_DST_TOKEN`) | No | |
 | `--dry-run` | `-n` | Show what would be migrated without performing the migration | No | `false` |
 | `--latest` | `-l` | Migrate latest N versions (by creation date) | No | |
 | `--rewrite-labels` | | Rewrite OCI image config labels to reflect destination owner/host (changes image digest) | No | `false` |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
-| `--src` | | Source [host/]owner | No | Current repository owner |
+| `--src` | `-s` | Source [host/]owner | No | Current repository owner |
 | `--src-token` | | Access token for source owner (fallback: `$GH_SRC_TOKEN`) | No | |
 | `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
 | `--version` | | Migrate specific version(s) by ID (can be specified multiple times) | No | All versions |
@@ -195,7 +195,7 @@ Package name change is not supported; the source package name is always used at 
 ### migrate docker
 
 ```sh
-gh pkg-kit migrate docker <package-name> --dst <dest-owner/repo> --src <source-owner/repo> [flags]
+gh pkg-kit migrate docker <package-name> --dst <dest-owner[/repo]> --src <source-owner/repo> [flags]
 ```
 
 Migrates docker packages from the legacy `docker.pkg.github.com` registry to `ghcr.io` within GitHub Packages.
@@ -207,13 +207,41 @@ Package name change is not supported; the source package name is always used at 
 | Flag | Short | Description | Required | Default |
 | ---- | ----- | ----------- | -------- | ------- |
 | `--delete` | | Delete source versions after successful migration | No | `false` |
-| `--dst` | | Destination [host/]owner/repo | Yes | |
+| `--dst` | `-d` | Destination [host/]owner[/repo] | Yes | |
 | `--dst-token` | | Access token for destination owner (fallback: `$GH_DST_TOKEN`) | No | |
 | `--dry-run` | `-n` | Show what would be migrated without performing the migration | No | `false` |
 | `--latest` | `-l` | Migrate latest N versions (by creation date) | No | |
 | `--rewrite-labels` | | Rewrite OCI image config labels to reflect destination owner/host (changes image digest) | No | `false` |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
-| `--src` | | Source [host/]owner/repo (repository name is required) | Yes | |
+| `--src` | `-s` | Source [host/]owner/repo (repository name is required) | Yes | |
+| `--src-token` | | Access token for source owner (fallback: `$GH_SRC_TOKEN`) | No | |
+| `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
+| `--version` | | Migrate specific version(s) by ID (can be specified multiple times) | No | All versions |
+
+### migrate npm
+
+```sh
+gh pkg-kit migrate npm <package-name> --dst <dest-owner[/repo]> [--src <source-owner>] [flags]
+```
+
+Migrates npm packages from one owner to another within GitHub Packages.
+Downloads .tgz tarball files from the source npm registry and pushes them to the destination.
+The source owner is resolved from the current repository if `--src` is not specified.
+The source and destination owner types (organization or user) are detected automatically.
+Package name change is not supported; the source package name is always used at destination.
+By default, the `repository` field in `package.json` inside the tarball is rewritten to reflect the destination URL. Use `--skip-rewrite-package-json` to disable this behavior.
+
+| Flag | Short | Description | Required | Default |
+| ---- | ----- | ----------- | -------- | ------- |
+| `--delete` | | Delete source versions after successful migration | No | `false` |
+| `--dst` | `-d` | Destination [host/]owner[/repo] | Yes | |
+| `--dst-token` | | Access token for destination owner (fallback: `$GH_DST_TOKEN`) | No | |
+| `--dry-run` | `-n` | Show what would be migrated without performing the migration | No | `false` |
+| `--latest` | `-l` | Migrate latest N versions (by creation date) | No | |
+| `--overwrite` | | Overwrite existing versions at destination by deleting them before pushing | No | `false` |
+| `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
+| `--skip-rewrite-package-json` | | Skip rewriting `package.json` in the tarball | No | `false` |
+| `--src` | `-s` | Source [host/]owner | No | Current repository owner |
 | `--src-token` | | Access token for source owner (fallback: `$GH_SRC_TOKEN`) | No | |
 | `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
 | `--version` | | Migrate specific version(s) by ID (can be specified multiple times) | No | All versions |
@@ -221,7 +249,7 @@ Package name change is not supported; the source package name is always used at 
 ### migrate nuget
 
 ```sh
-gh pkg-kit migrate nuget <package-name> --dst <dest-owner/repo> [--src <source-owner>] [flags]
+gh pkg-kit migrate nuget <package-name> --dst <dest-owner[/repo]> [--src <source-owner>] [flags]
 ```
 
 Migrates NuGet packages from one owner to another within GitHub Packages.
@@ -229,21 +257,60 @@ Downloads .nupkg files from the source NuGet registry and pushes them to the des
 The source owner is resolved from the current repository if `--src` is not specified.
 The source and destination owner types (organization or user) are detected automatically.
 Package name change is not supported; the source package name is always used at destination.
+By default, the `<repository>` element in `.nuspec` is rewritten to reflect the destination URL. Use `--skip-rewrite-repository` to disable this behavior.
 
 | Flag | Short | Description | Required | Default |
 | ---- | ----- | ----------- | -------- | ------- |
 | `--delete` | | Delete source versions after successful migration | No | `false` |
-| `--dst` | | Destination [host/]owner/repo | Yes | |
+| `--dst` | `-d` | Destination [host/]owner[/repo] | Yes | |
 | `--dst-token` | | Access token for destination owner (fallback: `$GH_DST_TOKEN`) | No | |
 | `--dry-run` | `-n` | Show what would be migrated without performing the migration | No | `false` |
 | `--latest` | `-l` | Migrate latest N versions (by creation date) | No | |
+| `--overwrite` | | Overwrite existing versions at the destination (delete and re-push on 409 conflict) | No | `false` |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
-| `--src` | | Source [host/]owner | No | Current repository owner |
+| `--skip-rewrite-repository` | | Skip rewriting `<repository>` element in .nuspec | No | `false` |
+| `--src` | `-s` | Source [host/]owner | No | Current repository owner |
 | `--src-token` | | Access token for source owner (fallback: `$GH_SRC_TOKEN`) | No | |
 | `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
 | `--version` | | Migrate specific version(s) by ID (can be specified multiple times) | No | All versions |
 
+## npm
+
+### npm download
+
+```sh
+gh pkg-kit npm download <package-name> [--owner <owner>] [--version <version>] [--output <path>]
+```
+
+Downloads a .tgz tarball file from the GitHub npm registry.
+Version defaults to the latest version if not specified.
+The owner is resolved from the current repository if `--owner` is not specified.
+The output file defaults to `<package-name>.<version>.tgz` in the current directory.
+
+| Flag | Short | Description | Required | Default |
+| ---- | ----- | ----------- | -------- | ------- |
+| `--output` | | Output file path | No | `<package-name>.<version>.tgz` |
+| `--owner` | `-o` | [HOST/]OWNER | No | Current repository owner |
+| `--version` | | Package version to download | No | Latest version |
+
 ## nuget
+
+### nuget download
+
+```sh
+gh pkg-kit nuget download <package-name> [--owner <owner>] [--version <version>] [--output <path>]
+```
+
+Downloads a .nupkg file from the GitHub NuGet registry.
+Version defaults to the latest version if not specified.
+The owner is resolved from the current repository if `--owner` is not specified.
+The output file defaults to `<package-name>.<version>.nupkg` in the current directory.
+
+| Flag | Short | Description | Required | Default |
+| ---- | ----- | ----------- | -------- | ------- |
+| `--output` | | Output file path | No | `<package-name>.<version>.nupkg` |
+| `--owner` | `-o` | [HOST/]OWNER | No | Current repository owner |
+| `--version` | | Package version to download | No | Latest version |
 
 ### nuget tool-restore
 
