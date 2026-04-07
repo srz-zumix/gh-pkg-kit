@@ -26,11 +26,38 @@ func ListFilteredVersions(ctx context.Context, client *gh.GitHubClient, owner, p
 		return nil, ownerType, err
 	}
 	filtered := gh.FilterVersions(versions, filter)
-	// Sort ascending (oldest → newest) so the newest version is pushed last,
-	// ensuring it becomes "latest" in GitHub Packages.
-	// Primary key: CreatedAt ascending; nil CreatedAt is treated as oldest.
-	// Fallback: semantic version ascending, then raw name string ascending.
-	slices.SortStableFunc(filtered, func(a, b *PackageVersion) int {
+	sortVersionsAscending(filtered)
+	return filtered, ownerType, nil
+}
+
+// versionSemverCache is a lazily populated cache of parsed semver values,
+// keyed by version name. It is used only when CreatedAt comparison is
+// insufficient (both timestamps are equal or both are nil).
+type versionSemverCache map[string]*semver.Version
+
+// get returns the cached semver for name, parsing it on first access.
+// The result is nil when the name is not valid semver.
+func (c versionSemverCache) get(name string) *semver.Version {
+	sv, ok := c[name]
+	if !ok {
+		sv, _ = semver.NewVersion(name)
+		c[name] = sv
+	}
+	return sv
+}
+
+// sortVersionsAscending sorts versions in-place, oldest first, so that the
+// newest version is pushed last and becomes "latest" in GitHub Packages.
+// Sort order:
+//  1. CreatedAt ascending; nil CreatedAt is treated as oldest (sort to front).
+//  2. Semantic version ascending (fallback when timestamps are equal or both nil).
+//  3. Name string ascending (final deterministic fallback).
+func sortVersionsAscending(versions []*PackageVersion) {
+	// Semver cache is populated lazily: only entries whose CreatedAt comparison
+	// is inconclusive (equal or both nil) are ever parsed.
+	cache := make(versionSemverCache)
+
+	slices.SortStableFunc(versions, func(a, b *PackageVersion) int {
 		aHasTime := a.CreatedAt != nil
 		bHasTime := b.CreatedAt != nil
 		if aHasTime && bHasTime {
@@ -44,16 +71,16 @@ func ListFilteredVersions(ctx context.Context, client *gh.GitHubClient, owner, p
 			// a has no timestamp → treat a as older, so a comes first
 			return -1
 		}
-		// Fallback: compare by semantic version
-		aSemver, aErr := semver.NewVersion(a.GetName())
-		bSemver, bErr := semver.NewVersion(b.GetName())
-		if aErr == nil && bErr == nil {
-			if cmp := aSemver.Compare(bSemver); cmp != 0 {
+		// Fallback: compare by semantic version (parsed and cached on demand)
+		aSV := cache.get(a.GetName())
+		bSV := cache.get(b.GetName())
+		if aSV != nil && bSV != nil {
+			if cmp := aSV.Compare(bSV); cmp != 0 {
 				return cmp
 			}
-		} else if aErr == nil {
+		} else if aSV != nil {
 			return 1 // a is valid semver, b is not → a is newer
-		} else if bErr == nil {
+		} else if bSV != nil {
 			return -1 // b is valid semver, a is not → b is newer
 		}
 		// Final fallback: lexicographic order by name
@@ -64,7 +91,6 @@ func ListFilteredVersions(ctx context.Context, client *gh.GitHubClient, owner, p
 		}
 		return 0
 	})
-	return filtered, ownerType, nil
 }
 
 // BuildVersionFilter creates a VersionFilter from flag values.
