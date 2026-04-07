@@ -6,6 +6,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/srz-zumix/go-gh-extension/pkg/gh"
 )
 
@@ -25,19 +26,43 @@ func ListFilteredVersions(ctx context.Context, client *gh.GitHubClient, owner, p
 		return nil, ownerType, err
 	}
 	filtered := gh.FilterVersions(versions, filter)
-	// Sort ascending by creation date so the newest version is pushed last,
+	// Sort ascending (oldest → newest) so the newest version is pushed last,
 	// ensuring it becomes "latest" in GitHub Packages.
+	// Primary key: CreatedAt ascending; nil CreatedAt is treated as oldest.
+	// Fallback: semantic version ascending, then raw name string ascending.
 	slices.SortStableFunc(filtered, func(a, b *PackageVersion) int {
-		if a.CreatedAt == nil && b.CreatedAt == nil {
-			return 0
-		}
-		if a.CreatedAt == nil {
+		aHasTime := a.CreatedAt != nil
+		bHasTime := b.CreatedAt != nil
+		if aHasTime && bHasTime {
+			if cmp := a.CreatedAt.Compare(b.CreatedAt.Time); cmp != 0 {
+				return cmp
+			}
+		} else if aHasTime {
+			// b has no timestamp → treat b as older, so b comes first
 			return 1
-		}
-		if b.CreatedAt == nil {
+		} else if bHasTime {
+			// a has no timestamp → treat a as older, so a comes first
 			return -1
 		}
-		return a.CreatedAt.Compare(b.CreatedAt.Time)
+		// Fallback: compare by semantic version
+		aSemver, aErr := semver.NewVersion(a.GetName())
+		bSemver, bErr := semver.NewVersion(b.GetName())
+		if aErr == nil && bErr == nil {
+			if cmp := aSemver.Compare(bSemver); cmp != 0 {
+				return cmp
+			}
+		} else if aErr == nil {
+			return 1 // a is valid semver, b is not → a is newer
+		} else if bErr == nil {
+			return -1 // b is valid semver, a is not → b is newer
+		}
+		// Final fallback: lexicographic order by name
+		if a.GetName() < b.GetName() {
+			return -1
+		} else if a.GetName() > b.GetName() {
+			return 1
+		}
+		return 0
 	})
 	return filtered, ownerType, nil
 }
