@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/srz-zumix/go-gh-extension/pkg/gh"
 	"github.com/srz-zumix/go-gh-extension/pkg/logger"
+	"github.com/srz-zumix/go-gh-extension/pkg/parser"
 )
 
 // NewDeleteCmd creates a command to delete a package version for a user
@@ -29,20 +30,24 @@ func NewDeleteCmd() *cobra.Command {
 				return fmt.Errorf("invalid version ID '%s': %w", args[1], err)
 			}
 			ctx := cmd.Context()
-			g, err := gh.NewGitHubClient()
+			repo, err := parser.Repository(parser.RepositoryOwnerWithHost(owner))
 			if err != nil {
 				return err
 			}
-			err = gh.DeleteUserPackageVersion(ctx, g, owner, packageType, packageName, versionID)
+			g, err := gh.NewGitHubClientWithRepo(repo)
 			if err != nil {
 				return err
 			}
-			logger.Info("Version deleted", "version", versionID, "package", packageName, "user", owner)
+			err = gh.DeleteUserPackageVersion(ctx, g, repo.Owner, packageType, packageName, versionID)
+			if err != nil {
+				return err
+			}
+			logger.Info("Version deleted", "version", versionID, "package", packageName, "user", repo.Owner)
 			return nil
 		},
 	}
 	f := cmd.Flags()
-	f.StringVarP(&owner, "owner", "o", "", "Owner name (defaults to authenticated user)")
+	f.StringVarP(&owner, "owner", "o", "", "Owner ([HOST/]OWNER, defaults to authenticated user)")
 	cmdutil.StringEnumFlag(cmd, &packageType, "type", "T", "", gh.PackageTypes, "Package type")
 	_ = cmd.MarkFlagRequired("type")
 	return cmd

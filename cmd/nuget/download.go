@@ -72,7 +72,7 @@ The output file defaults to <package-name>.<version>.nupkg in the current direct
 	}
 
 	f := cmd.Flags()
-	f.StringVarP(&owner, "owner", "o", "", "[HOST/]OWNER (defaults to current repository owner)")
+	f.StringVarP(&owner, "owner", "o", "", "Owner ([HOST/]OWNER, defaults to current repository owner)")
 	f.StringVar(&version, "version", "", "Package version to download (defaults to latest)")
 	f.StringVar(&output, "output", "", "Output file path (default: <package-name>.<version>.nupkg)")
 
