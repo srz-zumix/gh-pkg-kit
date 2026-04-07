@@ -14,6 +14,7 @@ func NewListCmd() *cobra.Command {
 		owner       string
 		packageType string
 		visibility  string
+		fields      []string
 		exporter    cmdutil.Exporter
 	)
 
@@ -37,7 +38,7 @@ func NewListCmd() *cobra.Command {
 				return err
 			}
 			r := render.NewRenderer(exporter)
-			r.RenderPackages(packages, nil)
+			r.RenderPackages(packages, fields)
 			return nil
 		},
 	}
@@ -45,6 +46,7 @@ func NewListCmd() *cobra.Command {
 	f.StringVarP(&owner, "owner", "o", "", "Owner ([HOST/]OWNER, defaults to current repository owner)")
 	cmdutil.StringEnumFlag(cmd, &packageType, "type", "T", "", gh.PackageTypes, "Package type")
 	cmdutil.StringEnumFlag(cmd, &visibility, "visibility", "V", "", gh.PackageVisibilityList, "Package visibility")
+	cmdutil.StringSliceEnumFlag(cmd, &fields, "field", "", nil, render.PackageFields, "Fields to display")
 	cmdutil.AddFormatFlags(cmd, &exporter)
 	return cmd
 }
