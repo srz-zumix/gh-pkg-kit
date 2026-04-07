@@ -3,6 +3,7 @@ package migrator
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/srz-zumix/go-gh-extension/pkg/gh"
@@ -23,7 +24,22 @@ func ListFilteredVersions(ctx context.Context, client *gh.GitHubClient, owner, p
 	if err != nil {
 		return nil, ownerType, err
 	}
-	return gh.FilterVersions(versions, filter), ownerType, nil
+	filtered := gh.FilterVersions(versions, filter)
+	// Sort ascending by creation date so the newest version is pushed last,
+	// ensuring it becomes "latest" in GitHub Packages.
+	slices.SortStableFunc(filtered, func(a, b *PackageVersion) int {
+		if a.CreatedAt == nil && b.CreatedAt == nil {
+			return 0
+		}
+		if a.CreatedAt == nil {
+			return 1
+		}
+		if b.CreatedAt == nil {
+			return -1
+		}
+		return a.CreatedAt.Compare(b.CreatedAt.Time)
+	})
+	return filtered, ownerType, nil
 }
 
 // BuildVersionFilter creates a VersionFilter from flag values.
