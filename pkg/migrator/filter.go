@@ -50,8 +50,11 @@ func (c versionSemverCache) get(name string) *semver.Version {
 // newest version is pushed last and becomes "latest" in GitHub Packages.
 // Sort order:
 //  1. CreatedAt ascending; nil CreatedAt is treated as oldest (sort to front).
-//  2. Semantic version ascending (fallback when timestamps are equal or both nil).
-//  3. Name string ascending (final deterministic fallback).
+//  2. Semantic version ascending when both names are valid semver
+//     (fallback when timestamps are equal or both nil).
+//  3. When only one name is valid semver, the invalid name sorts first
+//     (it is treated as older).
+//  4. Name string ascending (final deterministic fallback).
 func sortVersionsAscending(versions []*PackageVersion) {
 	// Semver cache is populated lazily: only entries whose CreatedAt comparison
 	// is inconclusive (equal or both nil) are ever parsed.
