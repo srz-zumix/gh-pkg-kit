@@ -22,6 +22,7 @@ func NewNuGetCmd() *cobra.Command {
 		dstToken                string
 		deleteFlag              bool
 		dryRun                  bool
+		overwrite               bool
 		skipRewriteRepository   bool
 		versionIDs              []int64
 		latest                  int
@@ -89,6 +90,7 @@ The source and destination owner types (organization or user) are detected autom
 			// Migrate each version
 			var migrated []int64
 			var failures []string
+			var destOwnerType gh.OwnerType
 			for _, v := range versions {
 				versionName := v.GetName()
 				logger.Info("Migrating NuGet package", "package", srcPackage, "version", versionName)
@@ -123,6 +125,43 @@ The source and destination owner types (organization or user) are detected autom
 				}
 
 				pushErr := gh.PushNuGetPackage(ctx, clients.DestClient, clients.DestRepo, rewritten)
+
+				// On conflict (409), retry after deleting the existing destination version when --force is set.
+				if pushErr != nil && overwrite && gh.IsNuGetConflictError(pushErr) {
+					logger.Info("Version already exists at destination, overwriting", "version", versionName)
+					// Detect destination owner type lazily.
+					if destOwnerType == "" {
+						if dt, dtErr := gh.DetectOwnerType(ctx, clients.DestClient, clients.DestRepo.Owner); dtErr != nil {
+							logger.Error("Failed to detect destination owner type", "error", dtErr)
+						} else {
+							destOwnerType = dt
+						}
+					}
+					if destOwnerType != "" {
+						destVersions, listErr := gh.ListPackageVersionsByOwnerType(ctx, clients.DestClient, destOwnerType, clients.DestRepo.Owner, "nuget", srcPackage)
+						if listErr != nil {
+							logger.Error("Failed to list destination versions for overwrite", "version", versionName, "error", listErr)
+						} else {
+							var destVersionID int64
+							for _, dv := range destVersions {
+								if dv.GetName() == versionName {
+									destVersionID = dv.GetID()
+									break
+								}
+							}
+							if destVersionID != 0 {
+								if delErr := gh.DeletePackageVersionByOwnerType(ctx, clients.DestClient, destOwnerType, clients.DestRepo.Owner, "nuget", srcPackage, destVersionID); delErr != nil {
+									logger.Error("Failed to delete existing destination version", "version", versionName, "error", delErr)
+								} else if _, seekErr := rewritten.Seek(0, 0); seekErr != nil {
+									logger.Error("Failed to seek rewritten file for retry", "version", versionName, "error", seekErr)
+								} else {
+									pushErr = gh.PushNuGetPackage(ctx, clients.DestClient, clients.DestRepo, rewritten)
+								}
+							}
+						}
+					}
+				}
+
 				if closeErr := rewritten.Close(); closeErr != nil {
 					logger.Error("Failed to close rewritten file", "version", versionName, "error", closeErr)
 				}
@@ -170,6 +209,7 @@ The source and destination owner types (organization or user) are detected autom
 	f.StringVar(&dstToken, "dst-token", "", "Access token for the destination owner (overrides gh auth token for destination; fallback: $GH_DST_TOKEN)")
 	f.BoolVar(&deleteFlag, "delete", false, "Delete source versions after successful migration")
 	f.BoolVarP(&dryRun, "dry-run", "n", false, "Show what would be migrated without performing the migration")
+	f.BoolVar(&overwrite, "overwrite", false, "Overwrite existing versions at the destination (delete and re-push on 409 conflict)")
 	f.BoolVar(&skipRewriteRepository, "skip-rewrite-repository", false, "Skip rewriting <repository> element in .nuspec (by default, the element is rewritten to reflect destination URL)")
 	f.Int64SliceVar(&versionIDs, "version", nil, "Migrate specific version(s) by ID (can be specified multiple times)")
 	f.IntVarP(&latest, "latest", "l", 0, "Migrate latest N versions (by creation date)")
