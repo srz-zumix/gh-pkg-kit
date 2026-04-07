@@ -3,6 +3,7 @@ package npm
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/srz-zumix/gh-pkg-kit/pkg/migrator"
@@ -56,7 +57,11 @@ The output file defaults to <package-name>.<version>.tgz in the current director
 
 			destPath := output
 			if destPath == "" {
-				destPath = fmt.Sprintf("%s.%s.tgz", packageName, version)
+				// Sanitize package name for use as a filename:
+				// scoped packages (e.g. "@scope/pkg") contain '/' which would be
+				// interpreted as a path separator by os.WriteFile.
+				safePackageName := strings.ReplaceAll(packageName, "/", "-")
+				destPath = fmt.Sprintf("%s.%s.tgz", safePackageName, version)
 			}
 
 			// Download the npm package tarball

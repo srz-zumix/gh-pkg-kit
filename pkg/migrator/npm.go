@@ -8,6 +8,7 @@ import (
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/srz-zumix/go-gh-extension/pkg/gh"
 	"github.com/srz-zumix/go-gh-extension/pkg/logger"
+	"github.com/srz-zumix/go-gh-extension/pkg/parser"
 )
 
 // MigrateNPM migrates npm packages from source to destination.
@@ -31,19 +32,15 @@ func MigrateNPM(
 	// Detect destination owner type once (needed for delete-on-overwrite).
 	var destOwnerType gh.OwnerType
 	var destOwnerTypeDetected bool
+	// destVersionCache maps destination version name→ID, populated lazily on the
+	// first overwrite conflict to avoid a repeated ListPackageVersions API call
+	// per conflicting version. Entries are removed after successful deletion.
+	var destVersionCache map[string]int64
 
 	// Generate destination repository URL for package.json rewriting
 	destRepoURL := ""
 	if !skipRewritePackageJSON {
-		destHost := destRepo.Host
-		if destHost == "" {
-			destHost = "github.com"
-		}
-		if destRepo.Name != "" {
-			destRepoURL = fmt.Sprintf("https://%s/%s/%s", destHost, destRepo.Owner, destRepo.Name)
-		} else {
-			destRepoURL = fmt.Sprintf("https://%s/%s", destHost, destRepo.Owner)
-		}
+		destRepoURL = parser.GetRepositoryURL(destRepo)
 	}
 
 	for _, v := range selectVersions {
@@ -87,12 +84,33 @@ func MigrateNPM(
 					destOwnerTypeDetected = true
 				}
 
+				// Populate the version name→ID cache once on the first conflict.
+				if destVersionCache == nil {
+					versions, listErr := gh.ListPackageVersionsByOwnerType(ctx, destClient, destOwnerType, destRepo.Owner, "npm", packageName)
+					if listErr != nil {
+						logger.Error("Failed to list destination versions for overwrite", "error", listErr)
+						failures = append(failures, fmt.Sprintf("version %d (%s): overwrite failed: %v", v.GetID(), versionName, listErr))
+						continue
+					}
+					destVersionCache = make(map[string]int64, len(versions))
+					for _, dv := range versions {
+						destVersionCache[dv.GetName()] = dv.GetID()
+					}
+				}
+
 				// Find and delete the existing version at the destination.
-				if deleteErr := deleteDestPackageVersion(ctx, destClient, destOwnerType, destRepo.Owner, "npm", packageName, versionName); deleteErr != nil {
+				destVersionID, ok := destVersionCache[versionName]
+				if !ok {
+					logger.Error("Destination version not found for overwrite", "version", versionName)
+					failures = append(failures, fmt.Sprintf("version %d (%s): overwrite failed: version not found at destination", v.GetID(), versionName))
+					continue
+				}
+				if deleteErr := gh.DeletePackageVersionByOwnerType(ctx, destClient, destOwnerType, destRepo.Owner, "npm", packageName, destVersionID); deleteErr != nil {
 					logger.Error("Failed to delete existing destination version for overwrite", "version", versionName, "error", deleteErr)
 					failures = append(failures, fmt.Sprintf("version %d (%s): overwrite failed: %v", v.GetID(), versionName, deleteErr))
 					continue
 				}
+				delete(destVersionCache, versionName)
 
 				// Retry push after deletion.
 				if err := gh.PushNPMPackage(ctx, destClient, destRepo, packageName, modified); err != nil {
@@ -112,21 +130,4 @@ func MigrateNPM(
 	}
 
 	return migrated, failures
-}
-
-// deleteDestPackageVersion finds the version matching versionName at the destination and deletes it.
-func deleteDestPackageVersion(ctx context.Context, client *gh.GitHubClient, ownerType gh.OwnerType, owner, packageType, packageName, versionName string) error {
-	versions, err := gh.ListPackageVersionsByOwnerType(ctx, client, ownerType, owner, packageType, packageName)
-	if err != nil {
-		return fmt.Errorf("failed to list destination versions: %w", err)
-	}
-	for _, v := range versions {
-		if v.GetName() == versionName {
-			if err := gh.DeletePackageVersionByOwnerType(ctx, client, ownerType, owner, packageType, packageName, v.GetID()); err != nil {
-				return fmt.Errorf("failed to delete version %d (%s): %w", v.GetID(), versionName, err)
-			}
-			return nil
-		}
-	}
-	return fmt.Errorf("version %q not found at destination", versionName)
 }
