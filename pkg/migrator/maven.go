@@ -27,7 +27,7 @@ func MigrateMaven(
 	if srcRepo.Name == "" || destRepo.Name == "" {
 		return migrated, []string{
 			fmt.Sprintf(
-				"source and destination repositories must have a non-empty Name for Maven migration: src=%q dest=%q",
+				"source and destination repositories for Maven migration must include a repository name in [HOST/]OWNER/REPO format: src=%q dest=%q",
 				srcRepo.Name,
 				destRepo.Name,
 			),
