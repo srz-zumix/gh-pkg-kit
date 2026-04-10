@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/srz-zumix/gh-pkg-kit/pkg/migrator"
@@ -78,15 +79,24 @@ Output files are written to --output-dir (default: current directory) as <artifa
 				}
 			}
 			for _, artifact := range artifacts {
+				// Sanitize components from the API to prevent path traversal.
+				safeVersion := strings.ReplaceAll(filepath.Base(version), "..", "_")
+				safeClassifier := strings.ReplaceAll(filepath.Base(artifact.Classifier), "..", "_")
 				var filename string
-				if artifact.Classifier != "" {
-					filename = fmt.Sprintf("%s-%s-%s.%s", artifactID, version, artifact.Classifier, artifact.Ext)
+				if safeClassifier != "" && safeClassifier != "." {
+					filename = fmt.Sprintf("%s-%s-%s.%s", artifactID, safeVersion, safeClassifier, artifact.Ext)
 				} else {
-					filename = fmt.Sprintf("%s-%s.%s", artifactID, version, artifact.Ext)
+					filename = fmt.Sprintf("%s-%s.%s", artifactID, safeVersion, artifact.Ext)
 				}
 				destPath := filename
 				if outDir != "" {
 					destPath = filepath.Join(outDir, filename)
+				}
+				// Ensure the resolved path stays within the intended directory.
+				absOut, _ := filepath.Abs(outDir)
+				absDest, _ := filepath.Abs(destPath)
+				if !strings.HasPrefix(absDest, absOut+string(filepath.Separator)) && absDest != absOut {
+					return fmt.Errorf("resolved path %q escapes output directory %q", absDest, absOut)
 				}
 				if err := os.WriteFile(destPath, artifact.Data, 0644); err != nil {
 					return fmt.Errorf("failed to write %s: %w", destPath, err)
