@@ -109,19 +109,20 @@ func MigrateMaven(
 					destVersionCache[dv.GetName()] = dv.GetID()
 				}
 			}
-			// Delete the existing destination version.
+			// Delete the existing destination content for overwrite.
 			destVersionID, ok := destVersionCache[versionName]
 			if !ok {
 				logger.Error("Destination version not found for overwrite", "version", versionName)
 				failures = append(failures, fmt.Sprintf("version %d (%s): overwrite failed: version not found at destination", v.GetID(), versionName))
 				continue
 			}
-			// Try deleting the single version first. GitHub API returns 400
-			// when attempting to delete the last remaining version of a package;
-			// in that case fall back to deleting the entire package.
-			deleteErr := gh.DeletePackageVersionByOwnerType(ctx, destClient, destOwnerType, destRepo.Owner, "maven", packageName, destVersionID)
-			if deleteErr != nil && gh.IsHTTPBadRequest(deleteErr) {
+			// Decide deletion scope from the known destination version count.
+			// If the package has only one version, delete the package directly.
+			var deleteErr error
+			if len(destVersionCache) == 1 {
 				deleteErr = gh.DeletePackageByOwnerType(ctx, destClient, destOwnerType, destRepo.Owner, "maven", packageName)
+			} else {
+				deleteErr = gh.DeletePackageVersionByOwnerType(ctx, destClient, destOwnerType, destRepo.Owner, "maven", packageName, destVersionID)
 			}
 			if deleteErr != nil {
 				logger.Error("Failed to delete existing destination version for overwrite", "version", versionName, "error", deleteErr)
