@@ -3,6 +3,7 @@ package maven
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/srz-zumix/gh-pkg-kit/pkg/migrator"
@@ -85,7 +86,7 @@ Output files are written to --output-dir (default: current directory) as <artifa
 				}
 				destPath := filename
 				if outDir != "" {
-					destPath = outDir + "/" + filename
+					destPath = filepath.Join(outDir, filename)
 				}
 				if err := os.WriteFile(destPath, artifact.Data, 0644); err != nil {
 					return fmt.Errorf("failed to write %s: %w", destPath, err)
