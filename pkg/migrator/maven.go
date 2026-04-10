@@ -24,6 +24,16 @@ func MigrateMaven(
 	var migrated []int64
 	var failures []string
 
+	if srcRepo.Name == "" || destRepo.Name == "" {
+		return migrated, []string{
+			fmt.Sprintf(
+				"source and destination repositories must have a non-empty Name for Maven migration: src=%q dest=%q",
+				srcRepo.Name,
+				destRepo.Name,
+			),
+		}
+	}
+
 	if len(selectVersions) == 0 {
 		return migrated, failures
 	}
