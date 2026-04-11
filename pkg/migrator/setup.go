@@ -1,11 +1,13 @@
 package migrator
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/srz-zumix/go-gh-extension/pkg/gh"
+	"github.com/srz-zumix/go-gh-extension/pkg/logger"
 )
 
 // ClientsAndRepositories holds the result of setting up source and destination clients and repositories.
@@ -56,3 +58,30 @@ func SetupClients(srcRepo, destRepo repository.Repository, srcToken, dstToken st
 	}, nil
 }
 
+// ResolveDestRepo resolves the destination repository name from the source package when it is not specified.
+// If clients.DestRepo.Name is already set, this is a no-op.
+// Otherwise, it looks up the source package via the GitHub API and uses its associated repository name.
+func ResolveDestRepo(ctx context.Context, clients *ClientsAndRepositories, packageType, packageName string) error {
+	if clients.DestRepo.Name != "" {
+		return nil
+	}
+	srcOwnerType, err := gh.DetectOwnerType(ctx, clients.SrcClient, clients.SrcRepo.Owner)
+	if err != nil {
+		return fmt.Errorf("failed to detect source owner type: %w", err)
+	}
+	pkg, err := gh.GetPackageByOwnerType(ctx, clients.SrcClient, srcOwnerType, clients.SrcRepo.Owner, packageType, packageName)
+	if err != nil {
+		return fmt.Errorf("failed to get source package '%s': %w", packageName, err)
+	}
+	repo := pkg.GetRepository()
+	if repo == nil {
+		return fmt.Errorf("source package '%s' is not associated with any repository", packageName)
+	}
+	repoName := repo.GetName()
+	if repoName == "" {
+		return fmt.Errorf("source package '%s' has an empty repository name", packageName)
+	}
+	clients.DestRepo.Name = repoName
+	logger.Info("Resolved destination repository name from source package", "package", packageName, "repo", repoName)
+	return nil
+}

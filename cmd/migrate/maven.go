@@ -63,11 +63,15 @@ GitHub Packages registry URL includes the repository context.`,
 			if clients.SrcRepo.Name == "" {
 				return fmt.Errorf("source repository name is required for Maven; specify --src as [host/]owner/repo")
 			}
-			if clients.DestRepo.Name == "" {
-				return fmt.Errorf("--dst must include a repository name for Maven (e.g. owner/repo)")
-			}
 
 			ctx := cmd.Context()
+
+			// If no repository name was given for the destination, resolve it from the source package metadata.
+			if clients.DestRepo.Name == "" {
+				if err := migrator.ResolveDestRepo(ctx, clients, "maven", srcPackage); err != nil {
+					return fmt.Errorf("failed to resolve destination repository name: %w", err)
+				}
+			}
 
 			// List source versions and apply filters
 			versions, srcOwnerType, err := migrator.ListFilteredVersions(ctx, clients.SrcClient, clients.SrcRepo.Owner, "maven", srcPackage, versionIDs, latest, since, until)
