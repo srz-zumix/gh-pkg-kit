@@ -36,8 +36,9 @@ Downloads .pom and .jar files from the source Maven registry and pushes them to 
 Accepts both colon-separated format (e.g. com.example:my-artifact) and the
 GitHub Packages dot-separated format (e.g. com.example.my-artifact).
 The source repository is resolved from the current repository if --src is not specified.
-Both --src and --dst must include a repository name ([host/]owner/repo) because the Maven
-GitHub Packages registry URL includes the repository context.`,
+--src must include a repository name ([host/]owner/repo) because the Maven
+GitHub Packages registry URL includes the repository context.
+The repository name in --dst is optional; if omitted, it is inferred from the source package metadata.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			srcPackage := args[0]
@@ -122,7 +123,7 @@ GitHub Packages registry URL includes the repository context.`,
 
 	f := cmd.Flags()
 	f.StringVarP(&src, "src", "s", "", "Source [host/]owner/repo (default: current repository)")
-	f.StringVarP(&dst, "dst", "d", "", "Destination [host/]owner/repo")
+	f.StringVarP(&dst, "dst", "d", "", "Destination [host/]owner[/repo] (repo is inferred from source package if omitted)")
 	_ = cmd.MarkFlagRequired("dst")
 	f.StringVar(&srcToken, "src-token", "", "Access token for the source owner (overrides gh auth token for source; fallback: $GH_SRC_TOKEN)")
 	f.StringVar(&dstToken, "dst-token", "", "Access token for the destination owner (overrides gh auth token for destination; fallback: $GH_DST_TOKEN)")
