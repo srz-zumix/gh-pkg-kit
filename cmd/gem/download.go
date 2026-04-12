@@ -1,7 +1,8 @@
-package nuget
+package gem
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -11,7 +12,7 @@ import (
 	"github.com/srz-zumix/go-gh-extension/pkg/parser"
 )
 
-// NewDownloadCmd creates a command to download a NuGet package from GitHub Packages
+// NewDownloadCmd creates a command to download a RubyGems package from GitHub Packages
 func NewDownloadCmd() *cobra.Command {
 	var (
 		owner   string
@@ -21,11 +22,11 @@ func NewDownloadCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "download <package-name>",
-		Short: "Download a NuGet package from GitHub Packages",
-		Long: `Downloads a .nupkg file from the GitHub NuGet registry.
+		Short: "Download a RubyGems package from GitHub Packages",
+		Long: `Downloads a .gem file from the GitHub RubyGems registry.
 Version defaults to the latest version if not specified.
 The owner is resolved from the current repository if --owner is not specified.
-The output file defaults to <package-name>.<version>.nupkg in the current directory.`,
+The output file defaults to <package-name>-<version>.gem in the current directory.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			packageName := args[0]
@@ -44,7 +45,7 @@ The output file defaults to <package-name>.<version>.nupkg in the current direct
 
 			// If version is not specified, get the latest version
 			if version == "" {
-				versions, _, err := migrator.ListFilteredVersions(ctx, g, repo.Owner, "nuget", packageName, nil, 1, "", "")
+				versions, _, err := migrator.ListFilteredVersions(ctx, g, repo.Owner, "rubygems", packageName, nil, 1, "", "")
 				if err != nil {
 					return fmt.Errorf("failed to list package versions: %w", err)
 				}
@@ -59,15 +60,18 @@ The output file defaults to <package-name>.<version>.nupkg in the current direct
 				// Sanitize package name for use as a filename:
 				// package names containing '/' would be interpreted as path separators.
 				safePackageName := strings.ReplaceAll(packageName, "/", "-")
-				destPath = fmt.Sprintf("%s.%s.nupkg", safePackageName, version)
+				destPath = fmt.Sprintf("%s-%s.gem", safePackageName, version)
 			}
 
-			f, err := gh.DownloadNuGetPackage(ctx, g, repo, packageName, version, destPath)
+			// Download the .gem file
+			gemData, err := gh.DownloadRubyGemsPackage(ctx, g, repo, packageName, version)
 			if err != nil {
 				return fmt.Errorf("failed to download '%s' version '%s': %w", packageName, version, err)
 			}
-			if closeErr := f.Close(); closeErr != nil {
-				logger.Error("Failed to close downloaded file", "package", packageName, "version", version, "error", closeErr)
+
+			// Write to file
+			if err := os.WriteFile(destPath, gemData, 0644); err != nil {
+				return fmt.Errorf("failed to write gem to file: %w", err)
 			}
 
 			logger.Info("Downloaded", "package", packageName, "version", version, "to", destPath)
@@ -76,9 +80,9 @@ The output file defaults to <package-name>.<version>.nupkg in the current direct
 	}
 
 	f := cmd.Flags()
-	f.StringVarP(&owner, "owner", "o", "", "Owner ([HOST/]OWNER, defaults to current repository owner)")
+	f.StringVarP(&owner, "owner", "o", "", "[HOST/]OWNER (defaults to current repository owner)")
 	f.StringVar(&version, "version", "", "Package version to download (defaults to latest)")
-	f.StringVar(&output, "output", "", "Output file path (default: <package-name>.<version>.nupkg)")
+	f.StringVar(&output, "output", "", "Output file path (default: <package-name>-<version>.gem)")
 
 	return cmd
 }
