@@ -16,18 +16,18 @@ import (
 // NewNuGetCmd creates a command to migrate NuGet packages between owners
 func NewNuGetCmd() *cobra.Command {
 	var (
-		src                     string
-		dst                     string
-		srcToken                string
-		dstToken                string
-		deleteFlag              bool
-		dryRun                  bool
-		overwrite               bool
-		skipRewriteRepository   bool
-		versionIDs              []int64
-		latest                  int
-		since                   string
-		until                   string
+		src                   string
+		dst                   string
+		srcToken              string
+		dstToken              string
+		deleteFlag            bool
+		dryRun                bool
+		overwrite             bool
+		skipRewriteRepository bool
+		versionIDs            []int64
+		latest                int
+		since                 string
+		until                 string
 	)
 
 	cmd := &cobra.Command{
@@ -60,6 +60,13 @@ The source and destination owner types (organization or user) are detected autom
 			}
 
 			ctx := cmd.Context()
+
+			// If no repository name was given for the destination, resolve it from the source package metadata.
+			if clients.DestRepo.Name == "" {
+				if err := migrator.ResolveDestRepo(ctx, clients, "nuget", srcPackage); err != nil {
+					return fmt.Errorf("failed to resolve destination repository name: %w", err)
+				}
+			}
 
 			// List source versions and apply filters
 			versions, srcOwnerType, err := migrator.ListFilteredVersions(ctx, clients.SrcClient, clients.SrcRepo.Owner, "nuget", srcPackage, versionIDs, latest, since, until)

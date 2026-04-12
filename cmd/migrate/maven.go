@@ -36,8 +36,9 @@ Downloads .pom and .jar files from the source Maven registry and pushes them to 
 Accepts both colon-separated format (e.g. com.example:my-artifact) and the
 GitHub Packages dot-separated format (e.g. com.example.my-artifact).
 The source repository is resolved from the current repository if --src is not specified.
-Both --src and --dst must include a repository name ([host/]owner/repo) because the Maven
-GitHub Packages registry URL includes the repository context.`,
+--src must include a repository name ([host/]owner/repo) because the Maven
+GitHub Packages registry URL includes the repository context.
+The repository name in --dst is optional; if omitted, it is inferred from the source package metadata.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			srcPackage := args[0]
@@ -63,11 +64,15 @@ GitHub Packages registry URL includes the repository context.`,
 			if clients.SrcRepo.Name == "" {
 				return fmt.Errorf("source repository name is required for Maven; specify --src as [host/]owner/repo")
 			}
-			if clients.DestRepo.Name == "" {
-				return fmt.Errorf("--dst must include a repository name for Maven (e.g. owner/repo)")
-			}
 
 			ctx := cmd.Context()
+
+			// If no repository name was given for the destination, resolve it from the source package metadata.
+			if clients.DestRepo.Name == "" {
+				if err := migrator.ResolveDestRepo(ctx, clients, "maven", srcPackage); err != nil {
+					return fmt.Errorf("failed to resolve destination repository name: %w", err)
+				}
+			}
 
 			// List source versions and apply filters
 			versions, srcOwnerType, err := migrator.ListFilteredVersions(ctx, clients.SrcClient, clients.SrcRepo.Owner, "maven", srcPackage, versionIDs, latest, since, until)
@@ -118,7 +123,7 @@ GitHub Packages registry URL includes the repository context.`,
 
 	f := cmd.Flags()
 	f.StringVarP(&src, "src", "s", "", "Source [host/]owner/repo (default: current repository)")
-	f.StringVarP(&dst, "dst", "d", "", "Destination [host/]owner/repo")
+	f.StringVarP(&dst, "dst", "d", "", "Destination [host/]owner[/repo] (repo is inferred from source package if omitted)")
 	_ = cmd.MarkFlagRequired("dst")
 	f.StringVar(&srcToken, "src-token", "", "Access token for the source owner (overrides gh auth token for source; fallback: $GH_SRC_TOKEN)")
 	f.StringVar(&dstToken, "dst-token", "", "Access token for the destination owner (overrides gh auth token for destination; fallback: $GH_DST_TOKEN)")

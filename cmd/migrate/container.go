@@ -68,20 +68,20 @@ The source and destination owner types (organization or user) are detected autom
 
 			ctx := cmd.Context()
 
-		return migrator.MigrateContainer(ctx, clients.SrcClient, clients.DestClient, migrator.ContainerOptions{
-			PackageType:   packageType,
-			Src:           clients.SrcRepo,
-			SrcPackage:    srcPackage,
-			Dest:          clients.DestRepo,
-			DestPackage:   srcPackage,
-			DeleteFlag:    deleteFlag,
-			DryRun:        dryRun,
-			RewriteLabels: rewriteLabels,
-			VersionIDs:    versionIDs,
-			Latest:        latest,
-			Since:         since,
-			Until:         until,
-		})
+			return migrator.MigrateContainer(ctx, clients.SrcClient, clients.DestClient, migrator.ContainerOptions{
+				PackageType:   packageType,
+				Src:           clients.SrcRepo,
+				SrcPackage:    srcPackage,
+				Dest:          clients.DestRepo,
+				DestPackage:   srcPackage,
+				DeleteFlag:    deleteFlag,
+				DryRun:        dryRun,
+				RewriteLabels: rewriteLabels,
+				VersionIDs:    versionIDs,
+				Latest:        latest,
+				Since:         since,
+				Until:         until,
+			})
 		},
 	}
 

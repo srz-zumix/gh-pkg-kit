@@ -59,6 +59,13 @@ The source and destination owner types (organization or user) are detected autom
 
 			ctx := cmd.Context()
 
+			// If no repository name was given for the destination, resolve it from the source package metadata.
+			if clients.DestRepo.Name == "" {
+				if err := migrator.ResolveDestRepo(ctx, clients, "npm", srcPackage); err != nil {
+					return fmt.Errorf("failed to resolve destination repository name: %w", err)
+				}
+			}
+
 			// List source versions and apply filters
 			versions, srcOwnerType, err := migrator.ListFilteredVersions(ctx, clients.SrcClient, clients.SrcRepo.Owner, "npm", srcPackage, versionIDs, latest, since, until)
 			if err != nil {
