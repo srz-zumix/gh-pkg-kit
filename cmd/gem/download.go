@@ -3,6 +3,7 @@ package gem
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/srz-zumix/gh-pkg-kit/pkg/migrator"
@@ -56,7 +57,10 @@ The output file defaults to <package-name>-<version>.gem in the current director
 
 			destPath := output
 			if destPath == "" {
-				destPath = fmt.Sprintf("%s-%s.gem", packageName, version)
+				// Sanitize package name for use as a filename:
+				// package names containing '/' would be interpreted as path separators.
+				safePackageName := strings.ReplaceAll(packageName, "/", "-")
+				destPath = fmt.Sprintf("%s-%s.gem", safePackageName, version)
 			}
 
 			// Download the .gem file

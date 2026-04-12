@@ -2,6 +2,7 @@ package nuget
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/srz-zumix/gh-pkg-kit/pkg/migrator"
@@ -55,7 +56,10 @@ The output file defaults to <package-name>.<version>.nupkg in the current direct
 
 			destPath := output
 			if destPath == "" {
-				destPath = fmt.Sprintf("%s.%s.nupkg", packageName, version)
+				// Sanitize package name for use as a filename:
+				// package names containing '/' would be interpreted as path separators.
+				safePackageName := strings.ReplaceAll(packageName, "/", "-")
+				destPath = fmt.Sprintf("%s.%s.nupkg", safePackageName, version)
 			}
 
 			f, err := gh.DownloadNuGetPackage(ctx, g, repo, packageName, version, destPath)
