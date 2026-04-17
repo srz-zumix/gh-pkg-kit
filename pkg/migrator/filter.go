@@ -12,20 +12,20 @@ import (
 
 // ListFilteredVersions detects the owner type, lists package versions, and applies version filters.
 // Returns the filtered versions and the detected owner type (needed for delete operations).
-func ListFilteredVersions(ctx context.Context, client *gh.GitHubClient, owner, packageType, packageName string, versionIDs []int64, latest int, since, until string) ([]*PackageVersion, gh.OwnerType, error) {
+func ListFilteredVersions(ctx context.Context, client *gh.GitHubClient, owner, packageType, packageName string, versions []string, latest int, since, until string) ([]*PackageVersion, gh.OwnerType, error) {
 	ownerType, err := gh.DetectOwnerType(ctx, client, owner)
 	if err != nil {
 		return nil, ownerType, fmt.Errorf("failed to detect owner type: %w", err)
 	}
-	versions, err := gh.ListPackageVersionsByOwnerType(ctx, client, ownerType, owner, packageType, packageName)
+	pkgVersions, err := gh.ListPackageVersionsByOwnerType(ctx, client, ownerType, owner, packageType, packageName)
 	if err != nil {
 		return nil, ownerType, fmt.Errorf("failed to list versions: %w", err)
 	}
-	filter, err := BuildVersionFilter(versionIDs, latest, since, until)
+	filter, err := BuildVersionFilter(versions, latest, since, until)
 	if err != nil {
 		return nil, ownerType, err
 	}
-	filtered := gh.FilterVersions(versions, filter)
+	filtered := gh.FilterVersions(pkgVersions, filter)
 	sortVersionsAscending(filtered)
 	return filtered, ownerType, nil
 }
@@ -97,10 +97,10 @@ func sortVersionsAscending(versions []*PackageVersion) {
 }
 
 // BuildVersionFilter creates a VersionFilter from flag values.
-func BuildVersionFilter(versionIDs []int64, latest int, since, until string) (gh.VersionFilter, error) {
+func BuildVersionFilter(versions []string, latest int, since, until string) (gh.VersionFilter, error) {
 	filter := gh.VersionFilter{
-		VersionIDs: versionIDs,
-		Latest:     latest,
+		Names:  versions,
+		Latest: latest,
 	}
 	if since != "" {
 		t, err := ParseDate(since)

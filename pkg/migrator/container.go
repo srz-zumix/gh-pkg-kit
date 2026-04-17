@@ -31,7 +31,7 @@ type ContainerOptions struct {
 	DeleteFlag    bool
 	DryRun        bool
 	RewriteLabels bool
-	VersionIDs    []int64
+	Versions      []string
 	Latest        int
 	Since         string
 	Until         string
@@ -39,7 +39,7 @@ type ContainerOptions struct {
 
 // MigrateContainer migrates container/docker packages between owners.
 func MigrateContainer(ctx context.Context, srcClient *gh.GitHubClient, destClient *gh.GitHubClient, opts ContainerOptions) error {
-	versions, srcOwnerType, err := ListFilteredVersions(ctx, srcClient, opts.Src.Owner, opts.PackageType, opts.SrcPackage, opts.VersionIDs, opts.Latest, opts.Since, opts.Until)
+	versions, srcOwnerType, err := ListFilteredVersions(ctx, srcClient, opts.Src.Owner, opts.PackageType, opts.SrcPackage, opts.Versions, opts.Latest, opts.Since, opts.Until)
 	if err != nil {
 		return err
 	}

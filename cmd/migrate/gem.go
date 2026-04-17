@@ -20,8 +20,8 @@ func NewGemCmd() *cobra.Command {
 		dstToken   string
 		deleteFlag bool
 		dryRun     bool
-		versionIDs []int64
-		latest     int
+		versionFilter []string
+		latest        int
 		since      string
 		until      string
 	)
@@ -60,7 +60,7 @@ The source and destination owner types (organization or user) are detected autom
 			}
 
 			// List source versions and apply filters
-			versions, srcOwnerType, err := migrator.ListFilteredVersions(ctx, clients.SrcClient, clients.SrcRepo.Owner, "rubygems", srcPackage, versionIDs, latest, since, until)
+			versions, srcOwnerType, err := migrator.ListFilteredVersions(ctx, clients.SrcClient, clients.SrcRepo.Owner, "rubygems", srcPackage, versionFilter, latest, since, until)
 			if err != nil {
 				return err
 			}
@@ -114,7 +114,7 @@ The source and destination owner types (organization or user) are detected autom
 	f.StringVar(&dstToken, "dst-token", "", "Access token for the destination owner (overrides gh auth token for destination; fallback: $GH_DST_TOKEN)")
 	f.BoolVar(&deleteFlag, "delete", false, "Delete source versions after successful migration")
 	f.BoolVarP(&dryRun, "dry-run", "n", false, "Show what would be migrated without performing the migration")
-	f.Int64SliceVar(&versionIDs, "version", nil, "Migrate specific version(s) by ID (can be specified multiple times)")
+	f.StringSliceVar(&versionFilter, "version", nil, "Migrate specific version(s) by ID or name (can be specified multiple times)")
 	f.IntVarP(&latest, "latest", "l", 0, "Migrate latest N versions (by creation date)")
 	f.StringVar(&since, "since", "", "Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD)")
 	f.StringVar(&until, "until", "", "Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD)")
