@@ -24,7 +24,7 @@ func newContainerMigrateCmd(packageType string, requireRepo bool) *cobra.Command
 		deleteFlag    bool
 		dryRun        bool
 		rewriteLabels bool
-		versions      []string
+		versionFilter []string
 		latest        int
 		since         string
 		until         string
@@ -77,7 +77,7 @@ The source and destination owner types (organization or user) are detected autom
 				DeleteFlag:    deleteFlag,
 				DryRun:        dryRun,
 				RewriteLabels: rewriteLabels,
-				Versions:      versions,
+				Versions:      versionFilter,
 				Latest:        latest,
 				Since:         since,
 				Until:         until,
@@ -98,7 +98,7 @@ The source and destination owner types (organization or user) are detected autom
 	f.BoolVar(&deleteFlag, "delete", false, "Delete source versions after successful migration")
 	f.BoolVarP(&dryRun, "dry-run", "n", false, "Show what would be migrated without performing the migration")
 	f.BoolVar(&rewriteLabels, "rewrite-labels", false, "Rewrite OCI image config labels (e.g. org.opencontainers.image.source) to reflect the destination owner/host (changes image digest)")
-	f.StringSliceVar(&versions, "version", nil, "Migrate specific version(s) by ID or name (can be specified multiple times)")
+	f.StringSliceVar(&versionFilter, "version", nil, "Migrate specific version(s) by ID or name (can be specified multiple times)")
 	f.IntVarP(&latest, "latest", "l", 0, "Migrate latest N versions (by creation date)")
 	f.StringVar(&since, "since", "", "Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD)")
 	f.StringVar(&until, "until", "", "Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD)")

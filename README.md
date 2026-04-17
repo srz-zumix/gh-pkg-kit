@@ -147,7 +147,7 @@ Package name change is not supported; the source package name is always used at 
 | `--src` | `-s` | Source [host/]owner | No | Current repository owner |
 | `--src-token` | | Access token for source owner (fallback: `$GH_SRC_TOKEN`) | No | |
 | `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
-| `--version` | | Migrate specific version(s) by ID (can be specified multiple times) | No | All versions |
+| `--version` | | Migrate specific version(s) by ID or name (can be specified multiple times) | No | All versions |
 
 ### migrate docker
 
@@ -173,7 +173,7 @@ Package name change is not supported; the source package name is always used at 
 | `--src` | `-s` | Source [host/]owner/repo (repository name is required) | No | Current repository |
 | `--src-token` | | Access token for source owner (fallback: `$GH_SRC_TOKEN`) | No | |
 | `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
-| `--version` | | Migrate specific version(s) by ID (can be specified multiple times) | No | All versions |
+| `--version` | | Migrate specific version(s) by ID or name (can be specified multiple times) | No | All versions |
 
 ### migrate gem
 
@@ -197,7 +197,7 @@ The source and destination owner types (organization or user) are detected autom
 | `--src` | `-s` | Source [host/]owner | No | Current repository owner |
 | `--src-token` | | Access token for source owner (fallback: `$GH_SRC_TOKEN`) | No | |
 | `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
-| `--version` | | Migrate specific version(s) by ID (can be specified multiple times) | No | All versions |
+| `--version` | | Migrate specific version(s) by ID or name (can be specified multiple times) | No | All versions |
 
 ### migrate maven
 
@@ -223,7 +223,7 @@ The repository name in `--dst` is optional; if omitted, it is inferred from the 
 | `--src` | `-s` | Source [host/]owner/repo (repository name is required) | No | Current repository |
 | `--src-token` | | Access token for source owner (fallback: `$GH_SRC_TOKEN`) | No | |
 | `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
-| `--version` | | Migrate specific version(s) by ID (can be specified multiple times) | No | All versions |
+| `--version` | | Migrate specific version(s) by ID or name (can be specified multiple times) | No | All versions |
 
 ### migrate npm
 
@@ -251,7 +251,7 @@ By default, the `repository` field in `package.json` inside the tarball is rewri
 | `--src` | `-s` | Source [host/]owner | No | Current repository owner |
 | `--src-token` | | Access token for source owner (fallback: `$GH_SRC_TOKEN`) | No | |
 | `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
-| `--version` | | Migrate specific version(s) by ID (can be specified multiple times) | No | All versions |
+| `--version` | | Migrate specific version(s) by ID or name (can be specified multiple times) | No | All versions |
 
 ### migrate nuget
 
@@ -279,7 +279,7 @@ By default, the `<repository>` element in `.nuspec` is rewritten to reflect the 
 | `--src` | `-s` | Source [host/]owner | No | Current repository owner |
 | `--src-token` | | Access token for source owner (fallback: `$GH_SRC_TOKEN`) | No | |
 | `--until` | | Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD) | No | |
-| `--version` | | Migrate specific version(s) by ID (can be specified multiple times) | No | All versions |
+| `--version` | | Migrate specific version(s) by ID or name (can be specified multiple times) | No | All versions |
 
 ## npm
 

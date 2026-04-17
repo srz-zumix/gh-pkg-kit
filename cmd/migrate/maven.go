@@ -15,17 +15,17 @@ import (
 // NewMavenCmd creates a command to migrate Maven packages between owners
 func NewMavenCmd() *cobra.Command {
 	var (
-		src        string
-		dst        string
-		srcToken   string
-		dstToken   string
-		deleteFlag bool
-		dryRun     bool
-		overwrite  bool
-		versions   []string
-		latest     int
-		since      string
-		until      string
+		src           string
+		dst           string
+		srcToken      string
+		dstToken      string
+		deleteFlag    bool
+		dryRun        bool
+		overwrite     bool
+		versionFilter []string
+		latest        int
+		since         string
+		until         string
 	)
 
 	cmd := &cobra.Command{
@@ -75,7 +75,7 @@ The repository name in --dst is optional; if omitted, it is inferred from the so
 			}
 
 			// List source versions and apply filters
-			versions, srcOwnerType, err := migrator.ListFilteredVersions(ctx, clients.SrcClient, clients.SrcRepo.Owner, "maven", srcPackage, versions, latest, since, until)
+			versions, srcOwnerType, err := migrator.ListFilteredVersions(ctx, clients.SrcClient, clients.SrcRepo.Owner, "maven", srcPackage, versionFilter, latest, since, until)
 			if err != nil {
 				return err
 			}
@@ -130,7 +130,7 @@ The repository name in --dst is optional; if omitted, it is inferred from the so
 	f.BoolVar(&deleteFlag, "delete", false, "Delete source versions after successful migration")
 	f.BoolVar(&overwrite, "overwrite", false, "Overwrite existing versions at the destination (delete and re-push on 409 conflict)")
 	f.BoolVarP(&dryRun, "dry-run", "n", false, "Show what would be migrated without performing the migration")
-	f.StringSliceVar(&versions, "version", nil, "Migrate specific version(s) by ID or name (can be specified multiple times)")
+	f.StringSliceVar(&versionFilter, "version", nil, "Migrate specific version(s) by ID or name (can be specified multiple times)")
 	f.IntVarP(&latest, "latest", "l", 0, "Migrate latest N versions (by creation date)")
 	f.StringVar(&since, "since", "", "Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD)")
 	f.StringVar(&until, "until", "", "Migrate versions created on or before this date (RFC3339 or YYYY-MM-DD)")
