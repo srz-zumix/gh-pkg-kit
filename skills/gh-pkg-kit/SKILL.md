@@ -354,7 +354,7 @@ Additional flag:
 
 | Flag | Default | Description |
 | ---- | ------- | ----------- |
-| `--no-rewrite-labels` | `false` | Skip rewriting OCI image config labels and manifest annotations (e.g. `org.opencontainers.image.source`) |
+| `--no-rewrite-labels` | `false` | Skip rewriting OCI image config labels and manifest annotations (for example `org.opencontainers.image.source`); when rewriting is enabled, those metadata updates also change the resulting image digest |
 
 ### Migrate legacy docker → ghcr.io (gh pkg-kit migrate docker)
 
