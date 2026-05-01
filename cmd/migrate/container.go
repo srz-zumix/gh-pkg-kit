@@ -17,17 +17,17 @@ func NewContainerCmd() *cobra.Command {
 // When requireRepo is true, --src must include the repository name ([HOST/]OWNER/REPO).
 func newContainerMigrateCmd(packageType string, requireRepo bool) *cobra.Command {
 	var (
-		src           string
-		dst           string
-		srcToken      string
-		dstToken      string
-		deleteFlag    bool
-		dryRun        bool
-		rewriteLabels bool
-		versionFilter []string
-		latest        int
-		since         string
-		until         string
+		src             string
+		dst             string
+		srcToken        string
+		dstToken        string
+		deleteFlag      bool
+		dryRun          bool
+		noRewriteLabels bool
+		versionFilter   []string
+		latest          int
+		since           string
+		until           string
 	)
 
 	cmd := &cobra.Command{
@@ -76,7 +76,7 @@ The source and destination owner types (organization or user) are detected autom
 				DestPackage:   srcPackage,
 				DeleteFlag:    deleteFlag,
 				DryRun:        dryRun,
-				RewriteLabels: rewriteLabels,
+				RewriteLabels: !noRewriteLabels,
 				Versions:      versionFilter,
 				Latest:        latest,
 				Since:         since,
@@ -97,7 +97,7 @@ The source and destination owner types (organization or user) are detected autom
 	f.StringVar(&dstToken, "dst-token", "", "Access token for the destination owner (overrides gh auth token for destination; fallback: $GH_DST_TOKEN)")
 	f.BoolVar(&deleteFlag, "delete", false, "Delete source versions after successful migration")
 	f.BoolVarP(&dryRun, "dry-run", "n", false, "Show what would be migrated without performing the migration")
-	f.BoolVar(&rewriteLabels, "rewrite-labels", false, "Rewrite OCI image config labels (e.g. org.opencontainers.image.source) to reflect the destination owner/host (changes image digest)")
+	f.BoolVar(&noRewriteLabels, "no-rewrite-labels", false, "Skip rewriting OCI image config labels and manifest annotations (e.g. org.opencontainers.image.source)")
 	f.StringSliceVar(&versionFilter, "version", nil, "Migrate specific version(s) by ID or name (can be specified multiple times)")
 	f.IntVarP(&latest, "latest", "l", 0, "Migrate latest N versions (by creation date)")
 	f.StringVar(&since, "since", "", "Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD)")
