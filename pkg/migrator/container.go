@@ -147,10 +147,9 @@ func MigrateContainer(ctx context.Context, srcClient *gh.GitHubClient, destClien
 }
 
 // copyImage copies an image from srcRef to destRef.
-// When opts.RewriteLabels is true, OCI annotation labels (e.g. org.opencontainers.image.source)
-// are rewritten to reflect the destination owner/host before pushing.
-// When opts.Dest.Name is non-empty, org.opencontainers.image.source is set to link
-// the package to the destination repository, even if RewriteLabels is false.
+// When opts.RewriteLabels is true, OCI config labels and manifest annotations
+// (for example, org.opencontainers.image.source) are rewritten to reflect
+// the destination owner or repository metadata before pushing.
 func copyImage(srcRef, destRef string, craneAuth crane.Option, opts ContainerOptions) error {
 	if !opts.RewriteLabels && opts.Dest.Name == "" {
 		return crane.Copy(srcRef, destRef, craneAuth)
