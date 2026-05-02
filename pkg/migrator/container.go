@@ -3,6 +3,8 @@ package migrator
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -39,6 +41,10 @@ type ContainerOptions struct {
 
 // MigrateContainer migrates container/docker packages between owners.
 func MigrateContainer(ctx context.Context, srcClient *gh.GitHubClient, destClient *gh.GitHubClient, opts ContainerOptions) error {
+	if opts.Dest.Name != "" && !opts.RewriteLabels {
+		return fmt.Errorf("--dst specifies a repository (%s) but --no-rewrite-labels is set; label rewriting is required to link the package to the destination repository", opts.Dest.Name)
+	}
+
 	versions, srcOwnerType, err := ListFilteredVersions(ctx, srcClient, opts.Src.Owner, opts.PackageType, opts.SrcPackage, opts.Versions, opts.Latest, opts.Since, opts.Until)
 	if err != nil {
 		return err
@@ -141,17 +147,18 @@ func MigrateContainer(ctx context.Context, srcClient *gh.GitHubClient, destClien
 }
 
 // copyImage copies an image from srcRef to destRef.
-// When opts.RewriteLabels is true, OCI annotation labels (e.g. org.opencontainers.image.source)
-// are rewritten to reflect the destination owner/host before pushing.
+// When opts.RewriteLabels is true, OCI config labels and manifest annotations
+// (for example, org.opencontainers.image.source) are rewritten to reflect
+// the destination owner or repository metadata before pushing.
 func copyImage(srcRef, destRef string, craneAuth crane.Option, opts ContainerOptions) error {
-	if !opts.RewriteLabels {
+	if !opts.RewriteLabels && opts.Dest.Name == "" {
 		return crane.Copy(srcRef, destRef, craneAuth)
 	}
 	return copyAndRewriteLabels(srcRef, destRef, opts, craneAuth)
 }
 
-// copyAndRewriteLabels pulls an image/index from srcRef, rewrites OCI config labels,
-// and pushes the result to destRef.
+// copyAndRewriteLabels pulls an image/index from srcRef, rewrites OCI config labels
+// and OCI manifest annotations, and pushes the result to destRef.
 func copyAndRewriteLabels(srcRef, destRef string, opts ContainerOptions, craneAuth crane.Option) error {
 	src, err := name.ParseReference(srcRef)
 	if err != nil {
@@ -176,27 +183,111 @@ func copyAndRewriteLabels(srcRef, destRef string, opts ContainerOptions, craneAu
 		if err != nil {
 			return err
 		}
-		modified, err := rewriteIndexLabels(idx, opts.Src.Host, opts.Src.Owner, opts.Dest.Host, opts.Dest.Owner)
+		modified, err := rewriteIndexLabels(idx, opts.Src, opts.Dest)
 		if err != nil {
 			return err
 		}
-		return remote.WriteIndex(dest, modified, remoteOpts...)
+		annotated, err := rewriteIndexAnnotations(modified, opts.Src, opts.Dest)
+		if err != nil {
+			return err
+		}
+		return remote.WriteIndex(dest, annotated, remoteOpts...)
 	default:
 		img, err := desc.Image()
 		if err != nil {
 			return err
 		}
-		modified, err := rewriteImageLabels(img, opts.Src.Host, opts.Src.Owner, opts.Dest.Host, opts.Dest.Owner)
+		modified, err := rewriteImageLabels(img, opts.Src, opts.Dest)
 		if err != nil {
 			return err
 		}
-		return remote.Write(dest, modified, remoteOpts...)
+		annotated, err := rewriteImageAnnotations(modified, opts.Src, opts.Dest)
+		if err != nil {
+			return err
+		}
+		return remote.Write(dest, annotated, remoteOpts...)
 	}
+}
+
+// rewriteAnnotationMap rewrites annotation values containing the source host/owner prefix
+// and, when dest.Name is non-empty, explicitly sets org.opencontainers.image.source
+// to link the package to the destination repository.
+// Returns the new annotations map and whether any changes were made.
+func rewriteAnnotationMap(annotations map[string]string, src, dest repository.Repository) (map[string]string, bool) {
+	if len(annotations) == 0 && dest.Name == "" {
+		return annotations, false
+	}
+
+	oldPrefix := fmt.Sprintf("https://%s/%s", src.Host, src.Owner)
+	newPrefix := fmt.Sprintf("https://%s/%s", dest.Host, dest.Owner)
+
+	modified := false
+	newAnnotations := make(map[string]string, len(annotations))
+	for k, v := range annotations {
+		newV := v
+		if strings.Contains(v, oldPrefix) {
+			newV = strings.ReplaceAll(v, oldPrefix, newPrefix)
+		}
+		if newV != v {
+			modified = true
+			logger.Info("Rewriting annotation", "key", k, "old", v, "new", newV)
+		}
+		newAnnotations[k] = newV
+	}
+
+	if dest.Name != "" {
+		destSource := fmt.Sprintf("https://%s/%s/%s", dest.Host, dest.Owner, dest.Name)
+		if newAnnotations["org.opencontainers.image.source"] != destSource {
+			logger.Info("Setting repository source annotation", "key", "org.opencontainers.image.source", "new", destSource)
+			newAnnotations["org.opencontainers.image.source"] = destSource
+			modified = true
+		}
+	}
+
+	return newAnnotations, modified
+}
+
+// rewriteImageAnnotations rewrites OCI manifest annotations on an image.
+func rewriteImageAnnotations(img v1.Image, src, dest repository.Repository) (v1.Image, error) {
+	manifest, err := img.Manifest()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get image manifest: %w", err)
+	}
+	newAnnotations, modified := rewriteAnnotationMap(manifest.Annotations, src, dest)
+	if !modified {
+		return img, nil
+	}
+	result := mutate.Annotations(img, newAnnotations)
+	annotatedImg, ok := result.(v1.Image)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type from mutate.Annotations: %T", result)
+	}
+	return annotatedImg, nil
+}
+
+// rewriteIndexAnnotations rewrites OCI manifest annotations on an image index.
+func rewriteIndexAnnotations(idx v1.ImageIndex, src, dest repository.Repository) (v1.ImageIndex, error) {
+	indexManifest, err := idx.IndexManifest()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get index manifest: %w", err)
+	}
+	newAnnotations, modified := rewriteAnnotationMap(indexManifest.Annotations, src, dest)
+	if !modified {
+		return idx, nil
+	}
+	result := mutate.Annotations(idx, newAnnotations)
+	annotatedIdx, ok := result.(v1.ImageIndex)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type from mutate.Annotations: %T", result)
+	}
+	return annotatedIdx, nil
 }
 
 // rewriteImageLabels rewrites OCI annotation labels on an image config
 // to reflect the new owner/host when migrating.
-func rewriteImageLabels(img v1.Image, srcHost, srcOwner, destHost, destOwner string) (v1.Image, error) {
+// When dest.Name is non-empty, org.opencontainers.image.source is explicitly set
+// to link the package to the destination repository.
+func rewriteImageLabels(img v1.Image, src, dest repository.Repository) (v1.Image, error) {
 	cfg, err := img.ConfigFile()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get image config: %w", err)
@@ -205,12 +296,13 @@ func rewriteImageLabels(img v1.Image, srcHost, srcOwner, destHost, destOwner str
 		return img, nil
 	}
 	labels := cfg.Config.Labels
-	if len(labels) == 0 {
+	// Skip if there are no labels to rewrite and no destination repo to link
+	if len(labels) == 0 && dest.Name == "" {
 		return img, nil
 	}
 
-	oldPrefix := fmt.Sprintf("https://%s/%s", srcHost, srcOwner)
-	newPrefix := fmt.Sprintf("https://%s/%s", destHost, destOwner)
+	oldPrefix := fmt.Sprintf("https://%s/%s", src.Host, src.Owner)
+	newPrefix := fmt.Sprintf("https://%s/%s", dest.Host, dest.Owner)
 
 	modified := false
 	newLabels := make(map[string]string, len(labels))
@@ -226,6 +318,17 @@ func rewriteImageLabels(img v1.Image, srcHost, srcOwner, destHost, destOwner str
 		newLabels[k] = newV
 	}
 
+	// When the destination repository is explicitly specified, set the source label
+	// so GitHub links the package to the destination repository.
+	if dest.Name != "" {
+		destSource := fmt.Sprintf("https://%s/%s/%s", dest.Host, dest.Owner, dest.Name)
+		if newLabels["org.opencontainers.image.source"] != destSource {
+			logger.Info("Setting repository source label", "key", "org.opencontainers.image.source", "new", destSource)
+			newLabels["org.opencontainers.image.source"] = destSource
+			modified = true
+		}
+	}
+
 	if !modified {
 		return img, nil
 	}
@@ -235,7 +338,9 @@ func rewriteImageLabels(img v1.Image, srcHost, srcOwner, destHost, destOwner str
 }
 
 // rewriteIndexLabels rewrites OCI annotation labels on all platform images in an image index.
-func rewriteIndexLabels(idx v1.ImageIndex, srcHost, srcOwner, destHost, destOwner string) (v1.ImageIndex, error) {
+// It also rewrites per-image manifest annotations and per-descriptor annotations in the index
+// manifest, and preserves the original index-level annotations for rewriteIndexAnnotations to process.
+func rewriteIndexLabels(idx v1.ImageIndex, src, dest repository.Repository) (v1.ImageIndex, error) {
 	manifest, err := idx.IndexManifest()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get index manifest: %w", err)
@@ -247,30 +352,53 @@ func rewriteIndexLabels(idx v1.ImageIndex, srcHost, srcOwner, destHost, destOwne
 		if err != nil {
 			return nil, fmt.Errorf("failed to get image for digest %s: %w", desc.Digest, err)
 		}
-		rewritten, err := rewriteImageLabels(img, srcHost, srcOwner, destHost, destOwner)
+		rewritten, err := rewriteImageLabels(img, src, dest)
 		if err != nil {
 			return nil, fmt.Errorf("failed to rewrite labels for digest %s: %w", desc.Digest, err)
 		}
+		// Also rewrite per-image manifest annotations (e.g. org.opencontainers.image.source on OCI images).
+		rewritten, err = rewriteImageAnnotations(rewritten, src, dest)
+		if err != nil {
+			return nil, fmt.Errorf("failed to rewrite image annotations for digest %s: %w", desc.Digest, err)
+		}
+		// Preserve and rewrite per-descriptor annotations from the original index manifest entry.
+		// Descriptor-level annotations (e.g. org.opencontainers.image.ref.name) are separate from
+		// image-level annotations and would be silently dropped without this.
+		descAnnotations, _ := rewriteAnnotationMap(desc.Annotations, src, dest)
 		adds = append(adds, mutate.IndexAddendum{
 			Add: rewritten,
 			Descriptor: v1.Descriptor{
+				MediaType:   desc.MediaType,
+				URLs:        desc.URLs,
+				Annotations: descAnnotations,
 				Platform:    desc.Platform,
-				Annotations: desc.Annotations,
 			},
 		})
 	}
 
-	return mutate.AppendManifests(empty.Index, adds...), nil
+	result := mutate.AppendManifests(empty.Index, adds...)
+
+	// Preserve original index-level annotations so that rewriteIndexAnnotations can rewrite them.
+	// Without this, empty.Index would cause the GHES source URL to be lost unrewritten.
+	if len(manifest.Annotations) > 0 {
+		annotated := mutate.Annotations(result, manifest.Annotations)
+		if idxWithAnnotations, ok := annotated.(v1.ImageIndex); ok {
+			return idxWithAnnotations, nil
+		}
+	}
+	return result, nil
 }
 
 // PullContainerOptions holds options for pulling a container image to a local file.
 type PullContainerOptions struct {
-	PackageType string
-	Src         repository.Repository
-	SrcPackage  string
-	Tag         string
-	Output      string
-	DryRun      bool
+	PackageType     string
+	Src             repository.Repository
+	SrcPackage      string
+	Tag             string
+	Output          string
+	DryRun          bool
+	Load            bool // Load the pulled tarball into the local Docker daemon via "docker load"
+	RemoveAfterLoad bool // Remove the local tarball after loading into Docker daemon (requires Load)
 }
 
 // PullContainerToFile pulls a container image tag from GitHub Packages and saves it as a Docker-loadable tarball.
@@ -313,6 +441,26 @@ func PullContainerToFile(ctx context.Context, client *gh.GitHubClient, opts Pull
 	}
 
 	logger.Info("Pulled image", "src", imageRef, "to", output)
+
+	if opts.Load {
+		logger.Info("Loading image into Docker daemon", "file", output)
+		loadCmd := exec.CommandContext(ctx, "docker", "load", "-i", output)
+		loadCmd.Stdout = os.Stdout
+		loadCmd.Stderr = os.Stderr
+		if err := loadCmd.Run(); err != nil {
+			return fmt.Errorf("failed to load image '%s' into Docker daemon: %w", output, err)
+		}
+		logger.Info("Loaded image into Docker daemon", "file", output)
+
+		if opts.RemoveAfterLoad {
+			logger.Info("Removing local tarball", "file", output)
+			if err := os.Remove(output); err != nil {
+				return fmt.Errorf("failed to remove tarball '%s': %w", output, err)
+			}
+			logger.Info("Removed local tarball", "file", output)
+		}
+	}
+
 	return nil
 }
 

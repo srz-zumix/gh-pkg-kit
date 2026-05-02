@@ -329,6 +329,10 @@ gh pkg-kit migrate container <package-name> --dst <dest-owner[/repo]> [flags]
 
 Copy container images between owners on `ghcr.io`. Multi-architecture images are preserved.
 Package name change is not supported; the source package name is always used at the destination.
+By default, OCI image config labels and manifest annotations (e.g. `org.opencontainers.image.source`) are rewritten to reflect the destination owner or host.
+Rewriting labels or annotations changes the resulting image digest; use `--no-rewrite-labels` to preserve the original digest only when you are not linking the package to a destination repository.
+Specify `/repo` in `--dst` to also set the source label and link the package to a specific destination repository.
+Linking to a destination repository requires rewriting labels or annotations, so `--dst <owner/repo>` is incompatible with `--no-rewrite-labels` and will change the resulting digest.
 
 ```sh
 # Migrate all versions to another org
@@ -337,18 +341,21 @@ gh pkg-kit migrate container my-image --dst dst-org
 # Migrate only the latest 5 versions with dry-run
 gh pkg-kit migrate container my-image --dst dst-org --latest 5 --dry-run
 
-# Migrate a specific version and rewrite OCI image labels for the new owner
-gh pkg-kit migrate container my-image --dst dst-org --version v1.2.3 --rewrite-labels
+# Migrate and link the package to a specific destination repository
+gh pkg-kit migrate container my-image --dst dst-org/dst-repo
 
 # Delete source versions after successful migration
 gh pkg-kit migrate container my-image --dst dst-org --delete
+
+# Skip rewriting OCI labels
+gh pkg-kit migrate container my-image --dst dst-org --no-rewrite-labels
 ```
 
 Additional flag:
 
 | Flag | Default | Description |
 | ---- | ------- | ----------- |
-| `--rewrite-labels` | `false` | Rewrite OCI image config labels to reflect destination owner/host (changes image digest) |
+| `--no-rewrite-labels` | `false` | Skip rewriting OCI image config labels and manifest annotations (for example `org.opencontainers.image.source`); when rewriting is enabled, those metadata updates also change the resulting image digest |
 
 ### Migrate legacy docker → ghcr.io (gh pkg-kit migrate docker)
 
@@ -358,6 +365,8 @@ gh pkg-kit migrate docker <package-name> --dst <dest-owner[/repo]> [flags]
 
 Copy images from `docker.pkg.github.com/OWNER/REPO/PACKAGE` to `ghcr.io`.
 `--src` must include the repository name.
+By default, OCI image config labels and manifest annotations (e.g. `org.opencontainers.image.source`) are rewritten to reflect the destination owner/host.
+Specify `/repo` in `--dst` to also set the source label to link the package to a specific destination repository.
 
 ```sh
 # Migrate from a legacy docker registry to ghcr.io under a new org
@@ -365,7 +374,19 @@ gh pkg-kit migrate docker my-image --src old-org/old-repo --dst dst-org
 
 # Restrict to versions created since a date
 gh pkg-kit migrate docker my-image --src old-org/old-repo --dst dst-org --since 2024-01-01
+
+# Migrate and link the package to a specific destination repository
+gh pkg-kit migrate docker my-image --src old-org/old-repo --dst dst-org/dst-repo
+
+# Skip rewriting OCI labels
+gh pkg-kit migrate docker my-image --src old-org/old-repo --dst dst-org --no-rewrite-labels
 ```
+
+Additional flag:
+
+| Flag | Default | Description |
+| ---- | ------- | ----------- |
+| `--no-rewrite-labels` | `false` | Skip rewriting OCI image config labels and manifest annotations (e.g. `org.opencontainers.image.source`) |
 
 ### Migrate RubyGems packages (gh pkg-kit migrate gem)
 

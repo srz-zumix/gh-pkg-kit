@@ -144,15 +144,16 @@ Uses the OCI Distribution API to copy image manifests and blobs, including multi
 The source owner is resolved from the current repository if `--src` is not specified.
 The source and destination owner types (organization or user) are detected automatically.
 Package name change is not supported; the source package name is always used at destination.
+By default, OCI image config labels (e.g. `org.opencontainers.image.source`) are rewritten to reflect the destination owner/host. Specify `/repo` in `--dst` to also update the source label to link the package to a specific destination repository. Use `--no-rewrite-labels` to disable this behavior.
 
 | Flag | Short | Description | Required | Default |
 | ---- | ----- | ----------- | -------- | ------- |
 | `--delete` | | Delete source versions after successful migration | No | `false` |
-| `--dst` | `-d` | Destination [host/]owner[/repo] | Yes | |
+| `--dst` | `-d` | Destination [host/]owner[/repo] (include repo to link the package to a specific repository) | Yes | |
 | `--dst-token` | | Access token for destination owner (fallback: `$GH_DST_TOKEN`) | No | |
 | `--dry-run` | `-n` | Show what would be migrated without performing the migration | No | `false` |
 | `--latest` | `-l` | Migrate latest N versions (by creation date) | No | |
-| `--rewrite-labels` | | Rewrite OCI image config labels to reflect destination owner/host (changes image digest) | No | `false` |
+| `--no-rewrite-labels` | | Disable rewriting of OCI image config labels to reflect the destination owner/host | No | `false` |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
 | `--src` | `-s` | Source [host/]owner | No | Current repository owner |
 | `--src-token` | | Access token for source owner (fallback: `$GH_SRC_TOKEN`) | No | |
@@ -170,15 +171,16 @@ Uses the OCI Distribution API to copy image manifests and blobs, including multi
 The repository name is required in `--src` because the legacy Docker Package Registry image path includes the owner and repository (`docker.pkg.github.com/OWNER/REPO/PACKAGE`).
 The source and destination owner types (organization or user) are detected automatically.
 Package name change is not supported; the source package name is always used at destination.
+By default, OCI image config labels (e.g. `org.opencontainers.image.source`) are rewritten to reflect the destination owner/host. Specify `/repo` in `--dst` to also update the source label to link the package to a specific destination repository. Use `--no-rewrite-labels` to disable this behavior.
 
 | Flag | Short | Description | Required | Default |
 | ---- | ----- | ----------- | -------- | ------- |
 | `--delete` | | Delete source versions after successful migration | No | `false` |
-| `--dst` | `-d` | Destination [host/]owner[/repo] | Yes | |
+| `--dst` | `-d` | Destination [host/]owner[/repo] (include repo to link the package to a specific repository) | Yes | |
 | `--dst-token` | | Access token for destination owner (fallback: `$GH_DST_TOKEN`) | No | |
 | `--dry-run` | `-n` | Show what would be migrated without performing the migration | No | `false` |
 | `--latest` | `-l` | Migrate latest N versions (by creation date) | No | |
-| `--rewrite-labels` | | Rewrite OCI image config labels to reflect destination owner/host (changes image digest) | No | `false` |
+| `--no-rewrite-labels` | | Disable rewriting of OCI image config labels to reflect the destination owner/host | No | `false` |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
 | `--src` | `-s` | Source [host/]owner/repo (repository name is required) | No | Current repository |
 | `--src-token` | | Access token for source owner (fallback: `$GH_SRC_TOKEN`) | No | |
