@@ -329,9 +329,10 @@ gh pkg-kit migrate container <package-name> --dst <dest-owner[/repo]> [flags]
 
 Copy container images between owners on `ghcr.io`. Multi-architecture images are preserved.
 Package name change is not supported; the source package name is always used at the destination.
-By default, OCI image config labels and manifest annotations (e.g. `org.opencontainers.image.source`) are rewritten to reflect the destination owner/host.
-Rewriting labels or annotations changes the resulting image digest; use `--no-rewrite-labels` to preserve the original digest.
-Specify `/repo` in `--dst` to also set the source label to link the package to a specific destination repository.
+By default, OCI image config labels and manifest annotations (e.g. `org.opencontainers.image.source`) are rewritten to reflect the destination owner or host.
+Rewriting labels or annotations changes the resulting image digest; use `--no-rewrite-labels` to preserve the original digest only when you are not linking the package to a destination repository.
+Specify `/repo` in `--dst` to also set the source label and link the package to a specific destination repository.
+Linking to a destination repository requires rewriting labels or annotations, so `--dst <owner/repo>` is incompatible with `--no-rewrite-labels` and will change the resulting digest.
 
 ```sh
 # Migrate all versions to another org
