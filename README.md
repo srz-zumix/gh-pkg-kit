@@ -56,7 +56,7 @@ See [.env.example](.env.example) for available variables and usage notes.
 ### container pull
 
 ```sh
-gh pkg-kit container pull <package-name> [--owner <owner>] [--tag <tag>] [--output <path>] [--dry-run]
+gh pkg-kit container pull <package-name> [--owner <owner>] [--tag <tag>] [--output <path>] [--dry-run] [--load] [--rm]
 ```
 
 Pulls a container image from the GitHub Container Registry (ghcr.io) and saves it as a Docker-loadable tarball.
@@ -67,8 +67,10 @@ The saved tarball can be loaded with: `docker load -i <output-file>`
 | Flag | Short | Description | Required | Default |
 | ---- | ----- | ----------- | -------- | ------- |
 | `--dry-run` | `-n` | Show what would be pulled without performing the pull | No | `false` |
+| `--load` | | Load the pulled image into the local Docker daemon after saving | No | `false` |
 | `--output` | | Output file path | No | `<package-name>-<tag>.tar` |
 | `--owner` | `-o` | [host/]owner | No | Current repository owner |
+| `--rm` | | Remove the local tarball after loading into Docker daemon (requires `--load`) | No | `false` |
 | `--tag` | `-t` | Image tag to pull | No | `"latest"` |
 
 ## docker
@@ -76,7 +78,7 @@ The saved tarball can be loaded with: `docker load -i <output-file>`
 ### docker pull
 
 ```sh
-gh pkg-kit docker pull <package-name> [--owner <owner/repo>] [--tag <tag>] [--output <path>] [--dry-run]
+gh pkg-kit docker pull <package-name> [--owner <owner/repo>] [--tag <tag>] [--output <path>] [--dry-run] [--load] [--rm]
 ```
 
 Pulls a docker image from the legacy Docker Package Registry (`docker.pkg.github.com`) and saves it as a Docker-loadable tarball.
@@ -88,8 +90,10 @@ The saved tarball can be loaded with: `docker load -i <output-file>`
 | Flag | Short | Description | Required | Default |
 | ---- | ----- | ----------- | -------- | ------- |
 | `--dry-run` | `-n` | Show what would be pulled without performing the pull | No | `false` |
+| `--load` | | Load the pulled image into the local Docker daemon after saving | No | `false` |
 | `--output` | | Output file path | No | `<package-name>-<tag>.tar` |
 | `--owner` | `-o` | [host/]owner/repo (repository name is required) | No | Current repository |
+| `--rm` | | Remove the local tarball after loading into Docker daemon (requires `--load`) | No | `false` |
 | `--tag` | `-t` | Image tag to pull | No | `"latest"` |
 
 ## gem
