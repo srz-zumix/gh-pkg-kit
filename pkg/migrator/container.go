@@ -41,6 +41,10 @@ type ContainerOptions struct {
 
 // MigrateContainer migrates container/docker packages between owners.
 func MigrateContainer(ctx context.Context, srcClient *gh.GitHubClient, destClient *gh.GitHubClient, opts ContainerOptions) error {
+	if opts.Dest.Name != "" && !opts.RewriteLabels {
+		return fmt.Errorf("--dst specifies a repository (%s) but --no-rewrite-labels is set; label rewriting is required to link the package to the destination repository", opts.Dest.Name)
+	}
+
 	versions, srcOwnerType, err := ListFilteredVersions(ctx, srcClient, opts.Src.Owner, opts.PackageType, opts.SrcPackage, opts.Versions, opts.Latest, opts.Since, opts.Until)
 	if err != nil {
 		return err
@@ -335,8 +339,8 @@ func rewriteImageLabels(img v1.Image, src, dest repository.Repository) (v1.Image
 }
 
 // rewriteIndexLabels rewrites OCI annotation labels on all platform images in an image index.
-// It also rewrites per-image manifest annotations and preserves the original index-level
-// annotations for rewriteIndexAnnotations to process.
+// It also rewrites per-image manifest annotations and per-descriptor annotations in the index
+// manifest, and preserves the original index-level annotations for rewriteIndexAnnotations to process.
 func rewriteIndexLabels(idx v1.ImageIndex, src, dest repository.Repository) (v1.ImageIndex, error) {
 	manifest, err := idx.IndexManifest()
 	if err != nil {
@@ -358,10 +362,17 @@ func rewriteIndexLabels(idx v1.ImageIndex, src, dest repository.Repository) (v1.
 		if err != nil {
 			return nil, fmt.Errorf("failed to rewrite image annotations for digest %s: %w", desc.Digest, err)
 		}
+		// Preserve and rewrite per-descriptor annotations from the original index manifest entry.
+		// Descriptor-level annotations (e.g. org.opencontainers.image.ref.name) are separate from
+		// image-level annotations and would be silently dropped without this.
+		descAnnotations, _ := rewriteAnnotationMap(desc.Annotations, src, dest)
 		adds = append(adds, mutate.IndexAddendum{
 			Add: rewritten,
 			Descriptor: v1.Descriptor{
-				Platform: desc.Platform,
+				MediaType:   desc.MediaType,
+				URLs:        desc.URLs,
+				Annotations: descAnnotations,
+				Platform:    desc.Platform,
 			},
 		})
 	}
