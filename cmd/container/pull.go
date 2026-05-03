@@ -45,6 +45,10 @@ func NewPullCmdFor(packageType string, requireRepo bool) *cobra.Command {
 			"The saved tarball can be loaded with: docker load -i <output-file>",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if removeAfterLoad && !load {
+				return fmt.Errorf("--rm requires --load")
+			}
+
 			packageName := args[0]
 
 			var ownerOpt parser.RepositoryOption
