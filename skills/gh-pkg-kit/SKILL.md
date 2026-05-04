@@ -96,7 +96,7 @@ gh pkg-kit                         # Root command
 ### Pull container image (gh pkg-kit container pull)
 
 ```sh
-gh pkg-kit container pull <package-name> [flags]
+gh pkg-kit container pull <package-name> [--owner <owner>] [--tag <tag>] [--output <path>] [--dry-run] [--load] [--rm]
 ```
 
 Pull a container image from `ghcr.io` and save it as a Docker-loadable tarball.
@@ -114,6 +114,12 @@ gh pkg-kit container pull my-image --owner my-org --output ./my-image.tar
 
 # Dry-run (show what would be pulled)
 gh pkg-kit container pull my-image --dry-run
+
+# Pull and load directly into the local Docker daemon
+gh pkg-kit container pull my-image --load
+
+# Pull, load into Docker daemon, and remove the local tarball afterwards
+gh pkg-kit container pull my-image --load --rm
 ```
 
 **Flags:**
@@ -121,8 +127,10 @@ gh pkg-kit container pull my-image --dry-run
 | Flag | Short | Default | Description |
 | ---- | ----- | ------- | ----------- |
 | `--dry-run` | `-n` | `false` | Show what would be pulled without performing the pull |
+| `--load` | | `false` | Load the pulled image into the local Docker daemon after saving |
 | `--output` | | `<package-name>-<tag>.tar` | Output file path |
 | `--owner` | `-o` | Current repository owner | `[host/]owner` |
+| `--rm` | | `false` | Remove the local tarball after loading into Docker daemon (requires `--load`) |
 | `--tag` | `-t` | `latest` | Image tag to pull |
 
 ## Docker (gh pkg-kit docker)
@@ -130,7 +138,7 @@ gh pkg-kit container pull my-image --dry-run
 ### Pull docker image (gh pkg-kit docker pull)
 
 ```sh
-gh pkg-kit docker pull <package-name> [flags]
+gh pkg-kit docker pull <package-name> [--owner <owner/repo>] [--tag <tag>] [--output <path>] [--dry-run] [--load] [--rm]
 ```
 
 Pull a docker image from the legacy `docker.pkg.github.com` registry and save it as a Docker-loadable tarball.
@@ -145,6 +153,12 @@ gh pkg-kit docker pull my-image --owner my-org/my-repo --tag v1.2.3
 
 # Dry-run
 gh pkg-kit docker pull my-image --owner my-org/my-repo --dry-run
+
+# Pull and load directly into the local Docker daemon
+gh pkg-kit docker pull my-image --owner my-org/my-repo --load
+
+# Pull, load into Docker daemon, and remove the local tarball afterwards
+gh pkg-kit docker pull my-image --owner my-org/my-repo --load --rm
 ```
 
 **Flags:**
@@ -152,8 +166,10 @@ gh pkg-kit docker pull my-image --owner my-org/my-repo --dry-run
 | Flag | Short | Default | Description |
 | ---- | ----- | ------- | ----------- |
 | `--dry-run` | `-n` | `false` | Show what would be pulled without performing the pull |
+| `--load` | | `false` | Load the pulled image into the local Docker daemon after saving |
 | `--output` | | `<package-name>-<tag>.tar` | Output file path |
 | `--owner` | `-o` | Current repository | `[host/]owner/repo` (repository name is required) |
+| `--rm` | | `false` | Remove the local tarball after loading into Docker daemon (requires `--load`) |
 | `--tag` | `-t` | `latest` | Image tag to pull |
 
 ## Gem (gh pkg-kit gem)

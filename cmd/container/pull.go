@@ -18,10 +18,12 @@ func NewPullCmd() *cobra.Command {
 // When requireRepo is true, --owner must include the repository name ([host/]owner/repo).
 func NewPullCmdFor(packageType string, requireRepo bool) *cobra.Command {
 	var (
-		owner  string
-		tag    string
-		output string
-		dryRun bool
+		owner           string
+		tag             string
+		output          string
+		dryRun          bool
+		load            bool
+		removeAfterLoad bool
 	)
 
 	registryDesc := "GitHub Container Registry (ghcr.io)"
@@ -43,6 +45,10 @@ func NewPullCmdFor(packageType string, requireRepo bool) *cobra.Command {
 			"The saved tarball can be loaded with: docker load -i <output-file>",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if removeAfterLoad && !load {
+				return fmt.Errorf("--rm requires --load")
+			}
+
 			packageName := args[0]
 
 			var ownerOpt parser.RepositoryOption
@@ -67,12 +73,14 @@ func NewPullCmdFor(packageType string, requireRepo bool) *cobra.Command {
 			ctx := cmd.Context()
 
 			return migrator.PullContainerToFile(ctx, g, migrator.PullContainerOptions{
-				PackageType: packageType,
-				Src:         repo,
-				SrcPackage:  packageName,
-				Tag:         tag,
-				Output:      output,
-				DryRun:      dryRun,
+				PackageType:     packageType,
+				Src:             repo,
+				SrcPackage:      packageName,
+				Tag:             tag,
+				Output:          output,
+				DryRun:          dryRun,
+				Load:            load,
+				RemoveAfterLoad: removeAfterLoad,
 			})
 		},
 	}
@@ -82,6 +90,8 @@ func NewPullCmdFor(packageType string, requireRepo bool) *cobra.Command {
 	f.StringVarP(&tag, "tag", "t", "", "Image tag to pull (default: \"latest\")")
 	f.StringVar(&output, "output", "", "Output file path (default: <package-name>-<tag>.tar)")
 	f.BoolVarP(&dryRun, "dry-run", "n", false, "Show what would be pulled without performing the pull")
+	f.BoolVar(&load, "load", false, "Load the pulled image into the local Docker daemon after saving")
+	f.BoolVar(&removeAfterLoad, "rm", false, "Remove the local tarball after loading into Docker daemon (requires --load)")
 
 	return cmd
 }
