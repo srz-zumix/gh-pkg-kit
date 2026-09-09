@@ -1,5 +1,5 @@
 package migrator
 
-import "github.com/google/go-github/v84/github"
+import "github.com/google/go-github/v90/github"
 
 type PackageVersion = github.PackageVersion

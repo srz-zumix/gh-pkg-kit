@@ -9,24 +9,19 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/srz-zumix/gh-pkg-kit/version"
 	"github.com/srz-zumix/go-gh-extension/pkg/actions"
-	"github.com/srz-zumix/go-gh-extension/pkg/gh/guardrails"
-	"github.com/srz-zumix/go-gh-extension/pkg/logger"
-)
-
-var (
-	logLevel string
-	readOnly bool
+	"github.com/srz-zumix/go-gh-extension/pkg/cmdflags"
 )
 
 var rootCmd = &cobra.Command{
-	Use:     "gh-pkg-kit",
-	Short:   "Package-related operations extensions for GitHub CLI",
-	Long:    `Package-related operations extensions for GitHub CLI`,
+	Use:   "gh-pkg-kit",
+	Short: "GitHub Packages operations extension for GitHub CLI",
+	Long: `Package-related operations extension for GitHub CLI.
+
+Download package assets (container, docker, gem, maven, npm, nuget),
+migrate packages between owners or registries (including legacy
+docker.pkg.github.com to ghcr.io), and manage packages and their versions
+for organizations and users (list/get/delete/restore).`,
 	Version: version.Version,
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		logger.SetLogLevel(logLevel)
-		guardrails.NewGuardrail(guardrails.ReadOnlyOption(readOnly))
-	},
 }
 
 func Execute() {
@@ -40,6 +35,5 @@ func init() {
 	if actions.IsRunsOn() {
 		rootCmd.SetErrPrefix(actions.GetErrorPrefix())
 	}
-	logger.AddCmdFlag(rootCmd, rootCmd.PersistentFlags(), &logLevel, "log-level", "L")
-	rootCmd.PersistentFlags().BoolVar(&readOnly, "read-only", false, "Run in read-only mode (prevent write operations)")
+	cmdflags.AddPersistentFlags(rootCmd)
 }
