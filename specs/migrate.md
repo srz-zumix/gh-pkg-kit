@@ -35,7 +35,7 @@ gh pkg-kit migrate docker ...
 | Flag | Short | Description | Required | Default |
 | ---- | ----- | ----------- | -------- | ------- |
 | `--delete` | | Delete source versions after successful migration | No | `false` |
-| `--dry-run` | `-n` | Show what would be migrated without performing the migration | No | `false` |
+| `--dryrun` | `-n` | Show what would be migrated without performing the migration | No | `false` |
 | `--src` | | Source [host/]owner | No | Current repository owner |
 | `--dst` | | Destination [host/]owner/repo (host detected by '.' in first segment) | Yes | |
 | `--latest` | `-l` | Migrate latest N versions (by creation date) | No | |
@@ -144,7 +144,7 @@ NuGet packages are stored in the GitHub NuGet registry (`nuget.pkg.github.com`).
 2. **Detect owner types**: Call Users API for both source and destination owners to determine org/user type.
 3. **List source versions**: Fetch all versions of the source package using the appropriate API (org or user).
 4. **Apply version filters**: Filter versions by `--version`, `--latest`, `--since`, `--until` flags.
-5. **Dry-run check**: If `--dry-run`, display the list of versions that would be migrated and exit.
+5. **Dry-run check**: If `--dryrun`, display the list of versions that would be migrated and exit.
 6. **Migrate versions**: For each selected version, perform the package-type-specific migration using the source package name at destination.
 7. **Delete source** (optional): If `--delete` is set, delete the migrated versions (or entire package if all versions were migrated) from the source.
 8. **Report**: Output a summary of migrated versions (success/failure counts).

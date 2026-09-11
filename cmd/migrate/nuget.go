@@ -215,7 +215,7 @@ The source and destination owner types (organization or user) are detected autom
 	f.StringVar(&srcToken, "src-token", "", "Access token for the source owner (overrides gh auth token for source; fallback: $GH_SRC_TOKEN)")
 	f.StringVar(&dstToken, "dst-token", "", "Access token for the destination owner (overrides gh auth token for destination; fallback: $GH_DST_TOKEN)")
 	f.BoolVar(&deleteFlag, "delete", false, "Delete source versions after successful migration")
-	f.BoolVarP(&dryRun, "dry-run", "n", false, "Show what would be migrated without performing the migration")
+	f.BoolVarP(&dryRun, "dryrun", "n", false, "Show what would be migrated without performing the migration")
 	f.BoolVar(&overwrite, "overwrite", false, "Overwrite existing versions at the destination (delete and re-push on 409 conflict)")
 	f.BoolVar(&skipRewriteRepository, "skip-rewrite-repository", false, "Skip rewriting <repository> element in .nuspec (by default, the element is rewritten to reflect destination URL)")
 	f.StringSliceVar(&versionFilter, "version", nil, "Migrate specific version(s) by ID or name (can be specified multiple times)")

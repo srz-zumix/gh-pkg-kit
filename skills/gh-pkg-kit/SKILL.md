@@ -96,7 +96,7 @@ gh pkg-kit                         # Root command
 ### Pull container image (gh pkg-kit container pull)
 
 ```sh
-gh pkg-kit container pull <package-name> [--owner <owner>] [--tag <tag>] [--output <path>] [--dry-run] [--load] [--rm]
+gh pkg-kit container pull <package-name> [--owner <owner>] [--tag <tag>] [--output <path>] [--dryrun] [--load] [--rm]
 ```
 
 Pull a container image from `ghcr.io` and save it as a Docker-loadable tarball.
@@ -113,7 +113,7 @@ gh pkg-kit container pull my-image --tag v1.2.3
 gh pkg-kit container pull my-image --owner my-org --output ./my-image.tar
 
 # Dry-run (show what would be pulled)
-gh pkg-kit container pull my-image --dry-run
+gh pkg-kit container pull my-image --dryrun
 
 # Pull and load directly into the local Docker daemon
 gh pkg-kit container pull my-image --load
@@ -126,7 +126,7 @@ gh pkg-kit container pull my-image --load --rm
 
 | Flag | Short | Default | Description |
 | ---- | ----- | ------- | ----------- |
-| `--dry-run` | `-n` | `false` | Show what would be pulled without performing the pull |
+| `--dryrun` | `-n` | `false` | Show what would be pulled without performing the pull |
 | `--load` | | `false` | Load the pulled image into the local Docker daemon after saving |
 | `--output` | | `<package-name>-<tag>.tar` | Output file path |
 | `--owner` | `-o` | Current repository owner | `[host/]owner` |
@@ -138,7 +138,7 @@ gh pkg-kit container pull my-image --load --rm
 ### Pull docker image (gh pkg-kit docker pull)
 
 ```sh
-gh pkg-kit docker pull <package-name> [--owner <owner/repo>] [--tag <tag>] [--output <path>] [--dry-run] [--load] [--rm]
+gh pkg-kit docker pull <package-name> [--owner <owner/repo>] [--tag <tag>] [--output <path>] [--dryrun] [--load] [--rm]
 ```
 
 Pull a docker image from the legacy `docker.pkg.github.com` registry and save it as a Docker-loadable tarball.
@@ -152,7 +152,7 @@ gh pkg-kit docker pull my-image --owner my-org/my-repo
 gh pkg-kit docker pull my-image --owner my-org/my-repo --tag v1.2.3
 
 # Dry-run
-gh pkg-kit docker pull my-image --owner my-org/my-repo --dry-run
+gh pkg-kit docker pull my-image --owner my-org/my-repo --dryrun
 
 # Pull and load directly into the local Docker daemon
 gh pkg-kit docker pull my-image --owner my-org/my-repo --load
@@ -165,7 +165,7 @@ gh pkg-kit docker pull my-image --owner my-org/my-repo --load --rm
 
 | Flag | Short | Default | Description |
 | ---- | ----- | ------- | ----------- |
-| `--dry-run` | `-n` | `false` | Show what would be pulled without performing the pull |
+| `--dryrun` | `-n` | `false` | Show what would be pulled without performing the pull |
 | `--load` | | `false` | Load the pulled image into the local Docker daemon after saving |
 | `--output` | | `<package-name>-<tag>.tar` | Output file path |
 | `--owner` | `-o` | Current repository | `[host/]owner/repo` (repository name is required) |
@@ -329,7 +329,7 @@ Common flags across most migrate subcommands:
 | `--delete` | | `false` | Delete source versions after successful migration |
 | `--dst` | `-d` | | Destination `[host/]owner[/repo]` (required) |
 | `--dst-token` | | `$GH_DST_TOKEN` | Access token for destination owner |
-| `--dry-run` | `-n` | `false` | Show what would be migrated without performing the migration |
+| `--dryrun` | `-n` | `false` | Show what would be migrated without performing the migration |
 | `--latest` | `-l` | | Migrate latest N versions (by creation date) |
 | `--since` | | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) |
 | `--src` | `-s` | Current repository / owner | Source `[host/]owner[/repo]` |
@@ -355,7 +355,7 @@ Linking to a destination repository requires rewriting labels or annotations, so
 gh pkg-kit migrate container my-image --dst dst-org
 
 # Migrate only the latest 5 versions with dry-run
-gh pkg-kit migrate container my-image --dst dst-org --latest 5 --dry-run
+gh pkg-kit migrate container my-image --dst dst-org --latest 5 --dryrun
 
 # Migrate and link the package to a specific destination repository
 gh pkg-kit migrate container my-image --dst dst-org/dst-repo
@@ -412,7 +412,7 @@ gh pkg-kit migrate gem <package-name> --dst <dest-owner[/repo]> [flags]
 
 ```sh
 gh pkg-kit migrate gem my-gem --dst dst-org
-gh pkg-kit migrate gem my-gem --dst dst-org --latest 3 --dry-run
+gh pkg-kit migrate gem my-gem --dst dst-org --latest 3 --dryrun
 ```
 
 ### Migrate Maven packages (gh pkg-kit migrate maven)
@@ -599,7 +599,7 @@ gh pkg-kit user restore my-pkg --type npm
 
 ```sh
 # Dry-run first
-gh pkg-kit migrate container my-image --src old-org --dst new-org --dry-run
+gh pkg-kit migrate container my-image --src old-org --dst new-org --dryrun
 
 # Migrate and delete source on success
 gh pkg-kit migrate container my-image --src old-org --dst new-org --delete
@@ -646,7 +646,7 @@ gh pkg-kit org list --owner my-org --format json --template '{{range .}}{{.name}
 
 ## Best Practices
 
-1. **Use `--dry-run` for migrations.** `migrate` commands can move large amounts of data; always verify with `--dry-run` before running.
+1. **Use `--dryrun` for migrations.** `migrate` commands can move large amounts of data; always verify with `--dryrun` before running.
 2. **Scope your tokens appropriately.** Container operations require a classic PAT with `read:packages` / `write:packages`.
 3. **Use `--read-only` for inspection sessions.** The global `--read-only` flag blocks any write operation, which is useful when scripting against production owners.
 4. **Filter by date or count.** Use `--since`, `--until`, and `--latest` to migrate packages incrementally instead of all at once.
