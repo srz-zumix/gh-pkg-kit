@@ -56,7 +56,7 @@ See [.env.example](.env.example) for available variables and usage notes.
 ### container pull
 
 ```sh
-gh pkg-kit container pull <package-name> [--owner <owner>] [--tag <tag>] [--output <path>] [--dry-run] [--load] [--rm]
+gh pkg-kit container pull <package-name> [--owner <owner>] [--tag <tag>] [--output <path>] [--dryrun] [--load] [--rm]
 ```
 
 Pulls a container image from the GitHub Container Registry (ghcr.io) and saves it as a Docker-loadable tarball.
@@ -66,7 +66,7 @@ The saved tarball can be loaded with: `docker load -i <output-file>`
 
 | Flag | Short | Description | Required | Default |
 | ---- | ----- | ----------- | -------- | ------- |
-| `--dry-run` | `-n` | Show what would be pulled without performing the pull | No | `false` |
+| `--dryrun` | `-n` | Show what would be pulled without performing the pull | No | `false` |
 | `--load` | | Load the pulled image into the local Docker daemon after saving | No | `false` |
 | `--output` | | Output file path | No | `<package-name>-<tag>.tar` |
 | `--owner` | `-o` | [host/]owner | No | Current repository owner |
@@ -78,7 +78,7 @@ The saved tarball can be loaded with: `docker load -i <output-file>`
 ### docker pull
 
 ```sh
-gh pkg-kit docker pull <package-name> [--owner <owner/repo>] [--tag <tag>] [--output <path>] [--dry-run] [--load] [--rm]
+gh pkg-kit docker pull <package-name> [--owner <owner/repo>] [--tag <tag>] [--output <path>] [--dryrun] [--load] [--rm]
 ```
 
 Pulls a docker image from the legacy Docker Package Registry (`docker.pkg.github.com`) and saves it as a Docker-loadable tarball.
@@ -89,7 +89,7 @@ The saved tarball can be loaded with: `docker load -i <output-file>`
 
 | Flag | Short | Description | Required | Default |
 | ---- | ----- | ----------- | -------- | ------- |
-| `--dry-run` | `-n` | Show what would be pulled without performing the pull | No | `false` |
+| `--dryrun` | `-n` | Show what would be pulled without performing the pull | No | `false` |
 | `--load` | | Load the pulled image into the local Docker daemon after saving | No | `false` |
 | `--output` | | Output file path | No | `<package-name>-<tag>.tar` |
 | `--owner` | `-o` | [host/]owner/repo (repository name is required) | No | Current repository |
@@ -155,7 +155,7 @@ By default, OCI image config labels (e.g. `org.opencontainers.image.source`) are
 | `--delete` | | Delete source versions after successful migration | No | `false` |
 | `--dst` | `-d` | Destination [host/]owner[/repo] (include repo to link the package to a specific repository) | Yes | |
 | `--dst-token` | | Access token for destination owner (fallback: `$GH_DST_TOKEN`) | No | |
-| `--dry-run` | `-n` | Show what would be migrated without performing the migration | No | `false` |
+| `--dryrun` | `-n` | Show what would be migrated without performing the migration | No | `false` |
 | `--latest` | `-l` | Migrate latest N versions (by creation date) | No | |
 | `--no-rewrite-labels` | | Disable rewriting of OCI image config labels to reflect the destination owner/host | No | `false` |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
@@ -182,7 +182,7 @@ By default, OCI image config labels (e.g. `org.opencontainers.image.source`) are
 | `--delete` | | Delete source versions after successful migration | No | `false` |
 | `--dst` | `-d` | Destination [host/]owner[/repo] (include repo to link the package to a specific repository) | Yes | |
 | `--dst-token` | | Access token for destination owner (fallback: `$GH_DST_TOKEN`) | No | |
-| `--dry-run` | `-n` | Show what would be migrated without performing the migration | No | `false` |
+| `--dryrun` | `-n` | Show what would be migrated without performing the migration | No | `false` |
 | `--latest` | `-l` | Migrate latest N versions (by creation date) | No | |
 | `--no-rewrite-labels` | | Disable rewriting of OCI image config labels to reflect the destination owner/host | No | `false` |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
@@ -207,7 +207,7 @@ The source and destination owner types (organization or user) are detected autom
 | `--delete` | | Delete source versions after successful migration | No | `false` |
 | `--dst` | `-d` | Destination [host/]owner[/repo] | Yes | |
 | `--dst-token` | | Access token for destination owner (fallback: `$GH_DST_TOKEN`) | No | |
-| `--dry-run` | `-n` | Show what would be migrated without performing the migration | No | `false` |
+| `--dryrun` | `-n` | Show what would be migrated without performing the migration | No | `false` |
 | `--latest` | `-l` | Migrate latest N versions (by creation date) | No | |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
 | `--src` | `-s` | Source [host/]owner | No | Current repository owner |
@@ -232,7 +232,7 @@ The repository name in `--dst` is optional; if omitted, it is inferred from the 
 | `--delete` | | Delete source versions after successful migration | No | `false` |
 | `--dst` | `-d` | Destination [host/]owner[/repo] | Yes | |
 | `--dst-token` | | Access token for destination owner (fallback: `$GH_DST_TOKEN`) | No | |
-| `--dry-run` | `-n` | Show what would be migrated without performing the migration | No | `false` |
+| `--dryrun` | `-n` | Show what would be migrated without performing the migration | No | `false` |
 | `--latest` | `-l` | Migrate latest N versions (by creation date) | No | |
 | `--overwrite` | | Overwrite existing versions at the destination (delete and re-push on 409 conflict) | No | `false` |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
@@ -259,7 +259,7 @@ By default, the `repository` field in `package.json` inside the tarball is rewri
 | `--delete` | | Delete source versions after successful migration | No | `false` |
 | `--dst` | `-d` | Destination [host/]owner[/repo] | Yes | |
 | `--dst-token` | | Access token for destination owner (fallback: `$GH_DST_TOKEN`) | No | |
-| `--dry-run` | `-n` | Show what would be migrated without performing the migration | No | `false` |
+| `--dryrun` | `-n` | Show what would be migrated without performing the migration | No | `false` |
 | `--latest` | `-l` | Migrate latest N versions (by creation date) | No | |
 | `--overwrite` | | Overwrite existing versions at destination by deleting them before pushing | No | `false` |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |
@@ -287,7 +287,7 @@ By default, the `<repository>` element in `.nuspec` is rewritten to reflect the 
 | `--delete` | | Delete source versions after successful migration | No | `false` |
 | `--dst` | `-d` | Destination [host/]owner[/repo] | Yes | |
 | `--dst-token` | | Access token for destination owner (fallback: `$GH_DST_TOKEN`) | No | |
-| `--dry-run` | `-n` | Show what would be migrated without performing the migration | No | `false` |
+| `--dryrun` | `-n` | Show what would be migrated without performing the migration | No | `false` |
 | `--latest` | `-l` | Migrate latest N versions (by creation date) | No | |
 | `--overwrite` | | Overwrite existing versions at the destination (delete and re-push on 409 conflict) | No | `false` |
 | `--since` | | Migrate versions created on or after this date (RFC3339 or YYYY-MM-DD) | No | |

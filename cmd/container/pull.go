@@ -89,7 +89,7 @@ func NewPullCmdFor(packageType string, requireRepo bool) *cobra.Command {
 	f.StringVarP(&owner, "owner", "o", "", ownerDesc)
 	f.StringVarP(&tag, "tag", "t", "", "Image tag to pull (default: \"latest\")")
 	f.StringVar(&output, "output", "", "Output file path (default: <package-name>-<tag>.tar)")
-	f.BoolVarP(&dryRun, "dry-run", "n", false, "Show what would be pulled without performing the pull")
+	f.BoolVarP(&dryRun, "dryrun", "n", false, "Show what would be pulled without performing the pull")
 	f.BoolVar(&load, "load", false, "Load the pulled image into the local Docker daemon after saving")
 	f.BoolVar(&removeAfterLoad, "rm", false, "Remove the local tarball after loading into Docker daemon (requires --load)")
 
