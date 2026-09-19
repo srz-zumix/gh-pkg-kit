@@ -10,7 +10,7 @@ require (
 	github.com/google/go-github/v90 v90.0.0
 	github.com/joho/godotenv v1.5.1
 	github.com/spf13/cobra v1.10.2
-	github.com/srz-zumix/go-gh-extension v0.6.12
+	github.com/srz-zumix/go-gh-extension v0.6.14
 )
 
 require (
