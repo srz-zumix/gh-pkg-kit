@@ -1,6 +1,6 @@
 ---
 name: gh-pkg-kit
-description: gh-pkg-kit is a GitHub CLI extension for working with GitHub Packages. Use it to download package assets (container, docker, gem, maven, npm, nuget), migrate packages between owners/registries (including legacy docker.pkg.github.com → ghcr.io), and manage packages/versions for organizations and users (list/get/delete/restore) — all directly from the command line via `gh pkg-kit`.
+description: gh-pkg-kit is a GitHub CLI extension for working with GitHub Packages. Use it to download package assets (container, docker, gem, maven, npm, nuget), configure a NuGet credential provider backed by gh auth, migrate packages between owners/registries (including legacy docker.pkg.github.com → ghcr.io), and manage packages/versions for organizations and users (list/get/delete/restore) — all directly from the command line via `gh pkg-kit`.
 ---
 
 # gh-pkg-kit
@@ -51,6 +51,10 @@ gh pkg-kit                         # Root command
 ├── npm                            # npm registry
 │   └── download                   # Download .tgz tarball
 ├── nuget                          # NuGet registry
+│   ├── credential-provider        # NuGet authentication using gh auth tokens
+│   │   ├── install                # Publish the .NET provider into the netcore plugin root
+│   │   ├── run                    # Run the installed .NET provider
+│   │   └── uninstall              # Remove the managed provider directory
 │   ├── download                   # Download .nupkg file
 │   └── tool-restore               # Run `dotnet tool restore` with injected credentials
 ├── migrate                        # Migrate packages between owners/registries
@@ -259,6 +263,75 @@ gh pkg-kit npm download my-pkg --version 1.2.3 --owner my-org
 | `--version` | | Latest version | Package version to download |
 
 ## NuGet (gh pkg-kit nuget)
+
+### Install credential provider (gh pkg-kit nuget credential-provider install)
+
+```sh
+gh pkg-kit nuget credential-provider install [--dir <path>] [--force]
+```
+
+Publishes the embedded .NET source into `~/.nuget/plugins/netcore/CredentialProvider.GhPkgKit`.
+Install requires .NET SDK 8+ and access to nuget.org; runtime use requires .NET 8+ and `gh` on PATH.
+The provider rolls forward to newer .NET runtimes and uses `NuGet.Protocol` for protocol v2 and cancellation.
+NuGet discovers the DLL by convention for project and tool restore. No PATH shim or token-bearing NuGet.Config is generated.
+`--force` replaces only an existing managed installation. Unmanaged directories and symbolic links are preserved.
+
+```sh
+gh auth login --hostname github.com
+gh pkg-kit nuget credential-provider install
+dotnet tool restore
+```
+
+Installed entry point: `~/.nuget/plugins/netcore/CredentialProvider.GhPkgKit/CredentialProvider.GhPkgKit.dll`.
+`NUGET_PLUGIN_PATHS` and `NUGET_NETCORE_PLUGIN_PATHS` override convention discovery.
+When migrating from the old shim, remove its plugin-path override from the environment and shell startup files,
+or replace the old path with the new DLL path while preserving other required plugins.
+The installer leaves the obsolete `~/.dotnet/tools/nuget-plugin-gh-pkg-kit` shim and shell settings unchanged.
+For a custom plugin root, explicitly configure the DLL path (this Unix example preserves explicit netcore plugins):
+
+```sh
+gh pkg-kit nuget credential-provider install --dir "$HOME/custom-nuget-plugins"
+export NUGET_NETCORE_PLUGIN_PATHS="${NUGET_NETCORE_PLUGIN_PATHS:+$NUGET_NETCORE_PLUGIN_PATHS;}$HOME/custom-nuget-plugins/CredentialProvider.GhPkgKit/CredentialProvider.GhPkgKit.dll"
+```
+
+Include other conventionally discovered plugins when using an override. The default installation needs no override.
+The provider calls `gh auth token --hostname <host>`; no interactive login occurs and `--interactive` is not required.
+Only the netcore (.NET tooling) plugin location is supported, not netfx.
+
+Credentials are provided only for HTTPS GitHub Packages NuGet URLs.
+GHES hosts must be registered with `gh auth login --hostname <host>` or set explicitly via `GH_HOST`.
+Tokens are read from gh configuration, secure storage, or the usual gh token environment variables.
+Use a classic PAT with `read:packages` and access to the package; OAuth and fine-grained tokens may be rejected.
+The provider does not perform interactive login or obtain a different token on authentication retries.
+
+| Flag | Required | Default | Description |
+| ---- | -------- | ------- | ----------- |
+| `--dir` | No | `~/.nuget/plugins/netcore` | Plugin root; the provider subdirectory is created beneath it |
+| `--force` | No | `false` | Replace an existing managed installation |
+
+### Run credential provider (gh pkg-kit nuget credential-provider run)
+
+```sh
+gh pkg-kit nuget credential-provider run [-Plugin]
+```
+
+Runs the installed .NET provider from the default netcore root and forwards protocol streams with `-Plugin`.
+NuGet normally launches the DLL directly.
+Without the optional argument, prints an installation hint and exits. `--help` displays command help.
+Protocol responses contain credentials; do not log them or run the protocol for manual token inspection.
+
+### Uninstall credential provider (gh pkg-kit nuget credential-provider uninstall)
+
+```sh
+gh pkg-kit nuget credential-provider uninstall [--dir <path>]
+```
+
+Removes the managed `CredentialProvider.GhPkgKit` subdirectory from the default netcore root or optional `--dir` root.
+An absent provider is ignored; directories without the generation marker and symbolic links are preserved.
+
+| Flag | Required | Default | Description |
+| ---- | -------- | ------- | ----------- |
+| `--dir` | No | `~/.nuget/plugins/netcore` | Netcore plugin root |
 
 ### Download nuget package (gh pkg-kit nuget download)
 

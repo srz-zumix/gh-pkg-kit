@@ -13,6 +13,7 @@ func newNuGetCmd() *cobra.Command {
 	}
 	cmd.AddCommand(nugetCmd.NewDownloadCmd())
 	cmd.AddCommand(nugetCmd.NewToolRestoreCmd())
+	cmd.AddCommand(nugetCmd.NewCredentialProviderCmd())
 	return cmd
 }
 

@@ -26,8 +26,17 @@ jobs:
       - name: Install dependencies
         run: go mod tidy
 
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
       - name: Build
         run: go build ./...
 
       - name: Run tests
+        env:
+          GH_PKG_KIT_TEST_DOTNET: "1"
         run: go test ./...

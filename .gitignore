@@ -31,6 +31,9 @@ go.work.sum
 /gh-pkg-kit
 /gh-pkg-kit.exe
 
+/pkg/nuget/provider/bin/
+/pkg/nuget/provider/obj/
+
 # temp
 [Tt]emp/
 
