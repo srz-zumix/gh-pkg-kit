@@ -19,7 +19,7 @@ func NewRunCmd() *cobra.Command {
 				return cmd.Help()
 			}
 			if len(args) == 0 {
-				_, err := fmt.Fprintln(cmd.OutOrStdout(), "Run 'gh pkg-kit nuget credential-provider install' to install the NuGet plugin shim")
+				_, err := fmt.Fprintln(cmd.OutOrStdout(), "Run 'gh pkg-kit nuget credential-provider install' to install the NuGet credential provider")
 				return err
 			}
 			if len(args) != 1 || args[0] != "-Plugin" {

@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -34,6 +35,14 @@ func TestCredentialProviderDotnetRestore(t *testing.T) {
 	dotnet, err := exec.LookPath("dotnet")
 	if err != nil {
 		t.Fatal(err)
+	}
+	sdkVersion, err := exec.Command(dotnet, "--version").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	major, _, _ := strings.Cut(strings.TrimSpace(string(sdkVersion)), ".")
+	if n, err := strconv.Atoi(major); err != nil || n < 10 {
+		t.Skipf("the local restore integration test requires .NET SDK 10+ (found %s)", strings.TrimSpace(string(sdkVersion)))
 	}
 	dir := t.TempDir()
 	write := func(path, content string, mode os.FileMode) {
