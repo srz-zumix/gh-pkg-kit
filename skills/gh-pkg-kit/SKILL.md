@@ -56,6 +56,7 @@ gh pkg-kit                         # Root command
 │   │   ├── run                    # Run the installed .NET provider
 │   │   └── uninstall              # Remove the managed provider directory
 │   ├── download                   # Download .nupkg file
+│   ├── restore                    # Run `dotnet restore` with a temporary credential provider
 │   └── tool-restore               # Run `dotnet tool restore` with a temporary credential provider
 ├── migrate                        # Migrate packages between owners/registries
 │   ├── container                  # Migrate container packages
@@ -356,6 +357,38 @@ gh pkg-kit nuget download MyPackage --version 1.2.3 --owner my-org
 | `--output` | | `<package-name>.<version>.nupkg` | Output file path |
 | `--owner` | `-o` | Current repository owner | `[HOST/]OWNER` |
 | `--version` | | Latest version | Package version to download |
+
+### Restore NuGet packages with a temporary credential provider (gh pkg-kit nuget restore)
+
+```sh
+gh pkg-kit nuget restore [project-or-solution] [--configfile <path>] [--work-dir <path>] [-- dotnet-restore-args...]
+```
+
+Run `dotnet restore` with a temporary GitHub Packages credential provider backed by `gh auth`.
+No permanent provider installation is required, and `NuGet.Config` is not modified.
+Requires .NET SDK 8+ and access to nuget.org to build the provider on each invocation.
+The provider is appended to the restore subprocess's `NUGET_PLUGIN_PATHS` and `NUGET_NETCORE_PLUGIN_PATHS`, preserving existing explicit paths and leaving the parent environment unchanged.
+Temporary provider files are deleted on exit, including on failure and when `--work-dir` is specified.
+The project or solution is optional; if omitted, dotnet uses the current directory.
+Arguments after `--` are optional and passed through to `dotnet restore`.
+
+```sh
+# Restore the project or solution in the current directory
+gh pkg-kit nuget restore
+
+# Restore a specific project with an existing config
+gh pkg-kit nuget restore ./MyProject.csproj --configfile ./NuGet.Config
+
+# Pass extra dotnet restore arguments
+gh pkg-kit nuget restore ./MySolution.sln -- --no-cache --verbosity minimal
+```
+
+**Flags:**
+
+| Flag | Short | Default | Description |
+| ---- | ----- | ------- | ----------- |
+| `--configfile` | | dotnet's default config discovery | Optional path to the existing `NuGet.Config`, passed through unchanged |
+| `--work-dir` | | System temp dir | Optional parent directory for temporary provider files (unique subdirectory deleted on exit) |
 
 ### Restore dotnet tools with a temporary credential provider (gh pkg-kit nuget tool-restore)
 

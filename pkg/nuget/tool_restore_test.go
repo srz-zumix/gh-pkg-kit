@@ -10,6 +10,15 @@ import (
 )
 
 func TestToolRestoreTemporaryProvider(t *testing.T) {
+	testRestoreTemporaryProvider(t, RunToolRestore, []string{"tool", "restore"}, nil)
+}
+
+func TestRestoreTemporaryProvider(t *testing.T) {
+	testRestoreTemporaryProvider(t, RunRestore, []string{"restore"}, []string{"Sample Project.csproj"})
+}
+
+func testRestoreTemporaryProvider(t *testing.T, run func(context.Context, string, string, []string) error, commandArgs, extraArgs []string) {
+	t.Helper()
 	if runtime.GOOS == "windows" {
 		t.Skip("fake dotnet uses a shell script")
 	}
@@ -49,17 +58,18 @@ provider="${NUGET_NETCORE_PLUGIN_PATHS##*;}"
 			t.Setenv("NUGET_PLUGIN_PATHS", "/existing/first.dll;/existing/second.dll")
 			t.Setenv("NUGET_NETCORE_PLUGIN_PATHS", "/existing/netcore.dll")
 			configArgument := config
-			expectedArgs := "tool\nrestore\n--configfile\n" + config + "\n--verbosity\nminimal\n"
+			restoreArgs := append(append([]string(nil), extraArgs...), "--verbosity", "minimal")
+			expectedArgs := strings.Join(commandArgs, "\n") + "\n--configfile\n" + config + "\n" + strings.Join(restoreArgs, "\n") + "\n"
 			if outcome == "default-discovery" {
 				configArgument = ""
-				expectedArgs = "tool\nrestore\n--verbosity\nminimal\n"
+				expectedArgs = strings.Join(commandArgs, "\n") + "\n" + strings.Join(restoreArgs, "\n") + "\n"
 				t.Setenv("NUGET_PLUGIN_PATHS", "")
 				t.Setenv("NUGET_NETCORE_PLUGIN_PATHS", "")
 			}
 			originalPluginPaths := os.Getenv("NUGET_PLUGIN_PATHS")
 			originalNetcorePaths := os.Getenv("NUGET_NETCORE_PLUGIN_PATHS")
 			workDir := filepath.Join(dir, "work")
-			err := RunToolRestore(context.Background(), configArgument, workDir, []string{"--verbosity", "minimal"})
+			err := run(context.Background(), configArgument, workDir, restoreArgs)
 			expectFailure := outcome == "restore-failure" || outcome == "publish-failure"
 			if (err != nil) != expectFailure {
 				t.Fatalf("unexpected result for %s: %v", outcome, err)
@@ -115,10 +125,19 @@ provider="${NUGET_NETCORE_PLUGIN_PATHS##*;}"
 }
 
 func TestToolRestoreRejectsMissingConfigBeforePreparingProvider(t *testing.T) {
+	testRestoreRejectsMissingConfigBeforePreparingProvider(t, RunToolRestore)
+}
+
+func TestRestoreRejectsMissingConfigBeforePreparingProvider(t *testing.T) {
+	testRestoreRejectsMissingConfigBeforePreparingProvider(t, RunRestore)
+}
+
+func testRestoreRejectsMissingConfigBeforePreparingProvider(t *testing.T, run func(context.Context, string, string, []string) error) {
+	t.Helper()
 	dir := t.TempDir()
 	config := filepath.Join(dir, "missing.config")
 	workDir := filepath.Join(dir, "work")
-	err := RunToolRestore(context.Background(), config, workDir, nil)
+	err := run(context.Background(), config, workDir, nil)
 	if err == nil || !strings.Contains(err.Error(), "config file not found: "+config) {
 		t.Fatalf("expected missing config error: %v", err)
 	}

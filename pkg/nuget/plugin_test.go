@@ -58,24 +58,33 @@ func TestCredentialProviderDotnetRestore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var packageData bytes.Buffer
-	archive := zip.NewWriter(&packageData)
-	for name, content := range map[string]string{
+	makePackage := func(contents map[string]string) []byte {
+		t.Helper()
+		var data bytes.Buffer
+		archive := zip.NewWriter(&data)
+		for name, content := range contents {
+			entry, err := archive.Create(name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := io.WriteString(entry, content); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := archive.Close(); err != nil {
+			t.Fatal(err)
+		}
+		return data.Bytes()
+	}
+	packageData := makePackage(map[string]string{
 		"CredentialProviderTest.nuspec":           `<package><metadata><id>CredentialProviderTest</id><version>1.0.0</version><authors>test</authors><description>Local authentication test</description><packageTypes><packageType name="DotnetTool" /></packageTypes></metadata></package>`,
 		"tools/net8.0/any/DotnetToolSettings.xml": `<DotNetCliTool Version="1"><Commands><Command Name="credential-provider-test" EntryPoint="Test.dll" Runner="dotnet" /></Commands></DotNetCliTool>`,
 		"tools/net8.0/any/Test.dll":               "test entrypoint (not executed)",
-	} {
-		entry, err := archive.Create(name)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := io.WriteString(entry, content); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := archive.Close(); err != nil {
-		t.Fatal(err)
-	}
+	})
+	libraryPackageData := makePackage(map[string]string{
+		"CredentialProviderLibrary.nuspec": `<package><metadata><id>CredentialProviderLibrary</id><version>1.0.0</version><authors>test</authors><description>Local library authentication test</description></metadata></package>`,
+		"lib/net8.0/_._":                   "",
+	})
 	var authenticated atomic.Bool
 	var feedURL string
 	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -97,7 +106,12 @@ func TestCredentialProviderDotnetRestore(t *testing.T) {
 			_, writeErr = fmt.Fprint(response, `{"versions":["1.0.0"]}`)
 		case "/_registry/nuget/flat/credentialprovidertest/1.0.0/credentialprovidertest.1.0.0.nupkg":
 			response.Header().Set("Content-Type", "application/octet-stream")
-			_, writeErr = response.Write(packageData.Bytes())
+			_, writeErr = response.Write(packageData)
+		case "/_registry/nuget/flat/credentialproviderlibrary/index.json":
+			_, writeErr = fmt.Fprint(response, `{"versions":["1.0.0"]}`)
+		case "/_registry/nuget/flat/credentialproviderlibrary/1.0.0/credentialproviderlibrary.1.0.0.nupkg":
+			response.Header().Set("Content-Type", "application/octet-stream")
+			_, writeErr = response.Write(libraryPackageData)
 		default:
 			response.WriteHeader(http.StatusNotFound)
 		}
@@ -161,6 +175,26 @@ func TestCredentialProviderDotnetRestore(t *testing.T) {
 	}
 	if entries, err := os.ReadDir(workDir); err != nil || len(entries) != 0 {
 		t.Fatalf("temporary provider not removed: %v, %v", entries, err)
+	}
+	projectPath := filepath.Join(dir, "Library Test.csproj")
+	write(projectPath, `<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup><ItemGroup><PackageReference Include="CredentialProviderLibrary" Version="1.0.0" /></ItemGroup></Project>`, 0600)
+	authenticated.Store(false)
+	t.Setenv("NUGET_PACKAGES", filepath.Join(dir, "library-packages"))
+	t.Setenv("NUGET_HTTP_CACHE_PATH", filepath.Join(dir, "library-http-cache"))
+	if err := RunRestore(ctx, configPath, workDir, []string{projectPath, "--no-cache", "--verbosity", "minimal"}); err != nil {
+		t.Fatalf("dotnet project restore with temporary provider: %v", err)
+	}
+	if !authenticated.Load() {
+		t.Fatal("project restore did not authenticate with the temporary credential provider")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "library-packages", "credentialproviderlibrary", "1.0.0", "credentialproviderlibrary.1.0.0.nupkg")); err != nil {
+		t.Fatalf("library package not restored: %v", err)
+	}
+	if entries, err := os.ReadDir(workDir); err != nil || len(entries) != 0 {
+		t.Fatalf("project restore temporary provider not removed: %v, %v", entries, err)
+	}
+	if _, err := os.Stat(filepath.Join(temporaryHome, ".nuget", "plugins", "netcore", ProviderName)); !os.IsNotExist(err) {
+		t.Fatal("project restore must not install a permanent provider")
 	}
 }
 

@@ -11,7 +11,15 @@ import (
 )
 
 func RunToolRestore(ctx context.Context, configFile, workDir string, args []string) error {
-	dotnetArgs := []string{"tool", "restore"}
+	return runRestore(ctx, []string{"tool", "restore"}, configFile, workDir, args)
+}
+
+func RunRestore(ctx context.Context, configFile, workDir string, args []string) error {
+	return runRestore(ctx, []string{"restore"}, configFile, workDir, args)
+}
+
+func runRestore(ctx context.Context, commandArgs []string, configFile, workDir string, args []string) error {
+	dotnetArgs := append([]string(nil), commandArgs...)
 	if configFile != "" {
 		configPath := ResolveConfigPath(configFile)
 		if configPath == "" {
@@ -40,7 +48,7 @@ func RunToolRestore(ctx context.Context, configFile, workDir string, args []stri
 	dotnetCmd.Stderr = os.Stderr
 	dotnetCmd.Stdin = os.Stdin
 	if err := dotnetCmd.Run(); err != nil {
-		return fmt.Errorf("dotnet tool restore failed: %w", err)
+		return fmt.Errorf("dotnet %s failed: %w", strings.Join(commandArgs, " "), err)
 	}
 	return nil
 }

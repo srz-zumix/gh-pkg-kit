@@ -12,6 +12,7 @@ func newNuGetCmd() *cobra.Command {
 		Long:  `NuGet package operations for GitHub Packages.`,
 	}
 	cmd.AddCommand(nugetCmd.NewDownloadCmd())
+	cmd.AddCommand(nugetCmd.NewRestoreCmd())
 	cmd.AddCommand(nugetCmd.NewToolRestoreCmd())
 	cmd.AddCommand(nugetCmd.NewCredentialProviderCmd())
 	return cmd
