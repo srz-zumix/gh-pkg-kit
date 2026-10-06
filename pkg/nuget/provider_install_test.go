@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/srz-zumix/go-gh-extension/pkg/logger"
 )
 
 func TestInstallCredentialProvider(t *testing.T) {
@@ -57,5 +60,66 @@ func TestInstallCredentialProvider(t *testing.T) {
 	}
 	if err := RemoveCredentialProvider(dir); err == nil {
 		t.Fatal("must not remove unmanaged directory")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	path, err = installCredentialProvider(context.Background(), "", false, publish)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if path != filepath.Join(home, ".nuget", "plugins", "netcore", ProviderName, ProviderName+".dll") {
+		t.Fatalf("incorrect default installation path: %s", path)
+	}
+}
+
+func captureInstallLogs(t *testing.T) func() string {
+	t.Helper()
+	file, err := os.CreateTemp(t.TempDir(), "install-log-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stderr := os.Stderr
+	os.Stderr = file
+	logger.SetLogLevel("info")
+	t.Cleanup(func() {
+		os.Stderr = stderr
+		logger.SetLogLevel("info")
+		if err := file.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return func() string {
+		t.Helper()
+		data, err := os.ReadFile(file.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(data)
+	}
+}
+
+func TestInstallReportsConventionDiscovery(t *testing.T) {
+	logs := captureInstallLogs(t)
+	t.Setenv("NUGET_PLUGIN_PATHS", "")
+	t.Setenv("NUGET_NETCORE_PLUGIN_PATHS", "")
+	path := filepath.Join(t.TempDir(), ProviderName, ProviderName+".dll")
+	ReportCredentialProviderInstallation(path)
+	logOutput := logs()
+	if !strings.Contains(logOutput, path) || strings.Contains(logOutput, "NUGET_PLUGIN_PATHS") || strings.Contains(logOutput, "level=WARN") {
+		t.Fatalf("incorrect installation guidance: %s", logOutput)
+	}
+}
+
+func TestInstallWarnsAboutDiscoveryOverrides(t *testing.T) {
+	logs := captureInstallLogs(t)
+	t.Setenv("NUGET_PLUGIN_PATHS", "/other/plugin")
+	t.Setenv("NUGET_NETCORE_PLUGIN_PATHS", "/other/netcore/plugin")
+	ReportCredentialProviderInstallation("/provider.dll")
+	logOutput := logs()
+	for _, name := range []string{"NUGET_PLUGIN_PATHS", "NUGET_NETCORE_PLUGIN_PATHS"} {
+		if !strings.Contains(logOutput, name+" overrides") || !strings.Contains(logOutput, "level=WARN") {
+			t.Fatal(logOutput)
+		}
 	}
 }

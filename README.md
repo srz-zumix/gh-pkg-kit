@@ -415,19 +415,20 @@ The output file defaults to `<package-name>.<version>.nupkg` in the current dire
 ### nuget tool-restore
 
 ```sh
-gh pkg-kit nuget tool-restore [--configfile <path>] [--work-dir <path>] [--overwrite] [-- dotnet-tool-restore-args...]
+gh pkg-kit nuget tool-restore [--configfile <path>] [--work-dir <path>] [-- dotnet-tool-restore-args...]
 ```
 
-Runs `dotnet tool restore` after injecting GitHub Packages credentials from the gh auth token into a NuGet.Config file.
-By default, a temporary copy of the NuGet.Config is created with credentials injected.
-With `--overwrite`, the credentials are written directly into the existing NuGet.Config.
-Extra arguments after `--` are passed through to `dotnet tool restore`.
+Runs `dotnet tool restore` with a temporary GitHub Packages credential provider that retrieves credentials from `gh auth`.
+No permanent provider installation is required, and NuGet.Config is not modified.
+Requires .NET SDK 8+ and access to nuget.org to build the provider on each invocation.
+The provider is added to the restore subprocess's `NUGET_PLUGIN_PATHS` and `NUGET_NETCORE_PLUGIN_PATHS`, preserving existing explicit paths without changing the parent environment.
+Temporary provider files are deleted on exit, including on failure and when `--work-dir` is specified.
+Extra arguments after `--` are optional and passed through to `dotnet tool restore`.
 
 | Flag | Short | Description | Required | Default |
 | ---- | ----- | ----------- | -------- | ------- |
-| `--configfile` | | Path to NuGet.Config (auto-detected if not specified) | No | Auto-detect |
-| `--overwrite` | | Overwrite the existing NuGet.Config with injected credentials instead of using a temporary copy | No | `false` |
-| `--work-dir` | | Working directory for temporary files | No | System temp dir (deleted on exit) |
+| `--configfile` | | Path to the existing NuGet.Config, passed through unchanged | No | dotnet's default config discovery |
+| `--work-dir` | | Parent directory for temporary provider files (unique subdirectory deleted on exit) | No | System temp dir |
 
 ## org
 

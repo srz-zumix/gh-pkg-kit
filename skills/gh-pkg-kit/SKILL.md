@@ -56,7 +56,7 @@ gh pkg-kit                         # Root command
 │   │   ├── run                    # Run the installed .NET provider
 │   │   └── uninstall              # Remove the managed provider directory
 │   ├── download                   # Download .nupkg file
-│   └── tool-restore               # Run `dotnet tool restore` with injected credentials
+│   └── tool-restore               # Run `dotnet tool restore` with a temporary credential provider
 ├── migrate                        # Migrate packages between owners/registries
 │   ├── container                  # Migrate container packages
 │   ├── docker                     # Migrate legacy docker → ghcr.io
@@ -357,25 +357,28 @@ gh pkg-kit nuget download MyPackage --version 1.2.3 --owner my-org
 | `--owner` | `-o` | Current repository owner | `[HOST/]OWNER` |
 | `--version` | | Latest version | Package version to download |
 
-### Restore dotnet tools with injected credentials (gh pkg-kit nuget tool-restore)
+### Restore dotnet tools with a temporary credential provider (gh pkg-kit nuget tool-restore)
 
 ```sh
-gh pkg-kit nuget tool-restore [flags] [-- dotnet-tool-restore-args...]
+gh pkg-kit nuget tool-restore [--configfile <path>] [--work-dir <path>] [-- dotnet-tool-restore-args...]
 ```
 
-Run `dotnet tool restore` after injecting GitHub Packages credentials (from the gh auth token) into a `NuGet.Config`.
-By default a temporary copy of `NuGet.Config` is used; with `--overwrite`, credentials are written directly into the existing file.
-Arguments after `--` are passed through to `dotnet tool restore`.
+Run `dotnet tool restore` with a temporary GitHub Packages credential provider backed by `gh auth`.
+No permanent provider installation is required, and `NuGet.Config` is not modified.
+Requires .NET SDK 8+ and access to nuget.org to build the provider on each invocation.
+The provider is appended to the restore subprocess's `NUGET_PLUGIN_PATHS` and `NUGET_NETCORE_PLUGIN_PATHS`, preserving existing explicit paths and leaving the parent environment unchanged.
+Temporary provider files are deleted on exit, including on failure and when `--work-dir` is specified.
+Arguments after `--` are optional and passed through to `dotnet tool restore`. The former `--overwrite` flag is no longer supported.
 
 ```sh
-# Auto-detect NuGet.Config and restore tools
+# Restore tools using dotnet's default config discovery
 gh pkg-kit nuget tool-restore
 
 # Use a specific NuGet.Config file
 gh pkg-kit nuget tool-restore --configfile ./NuGet.Config
 
-# Overwrite the existing NuGet.Config with credentials
-gh pkg-kit nuget tool-restore --overwrite
+# Build the temporary provider under a specific parent directory
+gh pkg-kit nuget tool-restore --work-dir ./tmp
 
 # Pass extra args through to `dotnet tool restore`
 gh pkg-kit nuget tool-restore -- --verbosity minimal
@@ -385,9 +388,8 @@ gh pkg-kit nuget tool-restore -- --verbosity minimal
 
 | Flag | Short | Default | Description |
 | ---- | ----- | ------- | ----------- |
-| `--configfile` | | Auto-detect | Path to `NuGet.Config` |
-| `--overwrite` | | `false` | Overwrite the existing `NuGet.Config` instead of using a temporary copy |
-| `--work-dir` | | System temp dir (deleted on exit) | Working directory for temporary files |
+| `--configfile` | | dotnet's default config discovery | Optional path to the existing `NuGet.Config`, passed through unchanged |
+| `--work-dir` | | System temp dir | Optional parent directory for temporary provider files (unique subdirectory deleted on exit) |
 
 ## Migrate (gh pkg-kit migrate)
 

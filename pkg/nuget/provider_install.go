@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/srz-zumix/go-gh-extension/pkg/logger"
 )
 
 const ProviderName = "CredentialProvider.GhPkgKit"
@@ -26,6 +28,25 @@ func DefaultProviderDir() (string, error) {
 	return filepath.Join(home, ".nuget", "plugins", "netcore"), nil
 }
 
+func ProvideCredentialProvider(ctx context.Context, workDir string) (string, func(), error) {
+	if workDir != "" {
+		if err := os.MkdirAll(workDir, 0700); err != nil {
+			return "", nil, err
+		}
+	}
+	dir, err := os.MkdirTemp(workDir, "gh-pkg-kit-nuget-*")
+	if err != nil {
+		return "", nil, err
+	}
+	cleanup := func() { _ = os.RemoveAll(dir) }
+	path, err := InstallCredentialProvider(ctx, dir, false)
+	if err != nil {
+		cleanup()
+		return "", nil, err
+	}
+	return path, cleanup, nil
+}
+
 func InstallCredentialProvider(ctx context.Context, dir string, force bool) (string, error) {
 	return installCredentialProvider(ctx, dir, force, func(ctx context.Context, sourceDir, outputDir string) error {
 		command := exec.CommandContext(ctx, "dotnet", "publish", filepath.Join(sourceDir, ProviderName+".csproj"),
@@ -41,6 +62,13 @@ func InstallCredentialProvider(ctx context.Context, dir string, force bool) (str
 }
 
 func installCredentialProvider(ctx context.Context, dir string, force bool, publish func(context.Context, string, string) error) (string, error) {
+	if dir == "" {
+		var err error
+		dir, err = DefaultProviderDir()
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve NuGet plugin directory: %w", err)
+		}
+	}
 	dir, err := filepath.Abs(dir)
 	if err != nil {
 		return "", err
@@ -138,6 +166,16 @@ func installCredentialProvider(ctx context.Context, dir string, force bool, publ
 		}
 	}
 	return filepath.Join(path, ProviderName+".dll"), nil
+}
+
+func ReportCredentialProviderInstallation(path string) {
+	logger.Info("Installed NuGet credential provider", "path", path)
+	logger.Info("Requires .NET 8 or later and gh on PATH at runtime")
+	for _, name := range []string{"NUGET_PLUGIN_PATHS", "NUGET_NETCORE_PLUGIN_PATHS"} {
+		if os.Getenv(name) != "" {
+			logger.Warn(name+" overrides convention-based plugin discovery; unset it or include the installed DLL path", "path", path)
+		}
+	}
 }
 
 func validateProviderDirectory(path string) error {
