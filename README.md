@@ -412,6 +412,25 @@ The output file defaults to `<package-name>.<version>.nupkg` in the current dire
 | `--owner` | `-o` | [HOST/]OWNER | No | Current repository owner |
 | `--version` | | Package version to download | No | Latest version |
 
+### nuget restore
+
+```sh
+gh pkg-kit nuget restore [project-or-solution] [--configfile <path>] [--work-dir <path>] [-- dotnet-restore-args...]
+```
+
+Runs `dotnet restore` with a temporary GitHub Packages credential provider that retrieves credentials from `gh auth`.
+No permanent provider installation is required, and NuGet.Config is not modified.
+Requires .NET SDK 8+ and access to nuget.org to build the provider on each invocation.
+The provider is added to the restore subprocess's `NUGET_PLUGIN_PATHS` and `NUGET_NETCORE_PLUGIN_PATHS`, preserving existing explicit paths without changing the parent environment.
+Temporary provider files are deleted on exit, including on failure and when `--work-dir` is specified.
+The project or solution is optional; if omitted, dotnet uses the current directory.
+Extra arguments after `--` are optional and passed through to `dotnet restore`.
+
+| Flag | Short | Description | Required | Default |
+| ---- | ----- | ----------- | -------- | ------- |
+| `--configfile` | | Path to the existing NuGet.Config, passed through unchanged | No | dotnet's default config discovery |
+| `--work-dir` | | Parent directory for temporary provider files (unique subdirectory deleted on exit) | No | System temp dir |
+
 ### nuget tool-restore
 
 ```sh
