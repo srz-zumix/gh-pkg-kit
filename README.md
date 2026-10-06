@@ -318,6 +318,83 @@ The output file defaults to `<package-name>.<version>.tgz` in the current direct
 
 ## nuget
 
+### nuget credential-provider install
+
+```sh
+gh pkg-kit nuget credential-provider install [--dir <path>] [--force]
+```
+
+Publishes the bundled .NET credential provider into `~/.nuget/plugins/netcore/CredentialProvider.GhPkgKit`.
+Installation requires .NET SDK 8 or later and access to nuget.org to restore `NuGet.Protocol` and its dependencies.
+The installed provider requires .NET 8 or later and `gh` on `PATH`; it can roll forward to newer .NET runtimes.
+NuGet automatically discovers the DLL for both project and tool restore, without a PATH shim.
+`--force` replaces only an existing gh-pkg-kit-managed installation. Unmanaged directories and symbolic links are preserved.
+No token is stored in the provider directory or written into NuGet.Config.
+
+```sh
+gh auth login --hostname github.com
+gh pkg-kit nuget credential-provider install
+dotnet tool restore
+```
+
+Installed layout:
+
+```text
+~/.nuget/plugins/netcore/CredentialProvider.GhPkgKit/
+|- CredentialProvider.GhPkgKit.dll
+|- CredentialProvider.GhPkgKit.deps.json
+|- CredentialProvider.GhPkgKit.runtimeconfig.json
+|- NuGet.Protocol.dll
+`- ... dependency DLLs
+```
+
+`NUGET_PLUGIN_PATHS` and `NUGET_NETCORE_PLUGIN_PATHS` can override convention-based discovery.
+When migrating from the old PATH shim, remove its plugin-path override (including any shell startup setting),
+or replace the old path with the installed DLL's absolute path while preserving other required plugins.
+The obsolete shim in `~/.dotnet/tools` is not removed automatically.
+The installer does not modify shell configuration or NuGet.Config.
+For a custom `--dir` root, explicitly list `<root>/CredentialProvider.GhPkgKit/CredentialProvider.GhPkgKit.dll` in `NUGET_NETCORE_PLUGIN_PATHS`;
+this overrides convention discovery, so include other required plugins too.
+
+The provider returns gh authentication tokens only for HTTPS GitHub Packages NuGet URLs.
+GitHub Enterprise hosts must be registered with `gh auth login --hostname <host>` or explicitly set using `GH_HOST`.
+Tokens can come from gh configuration, secure storage, `GH_TOKEN` / `GITHUB_TOKEN`, or `GH_ENTERPRISE_TOKEN` / `GITHUB_ENTERPRISE_TOKEN`.
+Use a classic PAT with `read:packages` and access to the package; an OAuth or fine-grained token may not have the necessary package permissions.
+The provider does not perform interactive login or change tokens when NuGet retries authentication.
+
+NuGet launches the DLL directly; `NuGet.Protocol` handles protocol v2, request cancellation, and process lifetime.
+`gh auth token --hostname <host>` supplies the token without interactive login. `--interactive` is not required.
+This installation targets .NET tooling (`netcore`), not the .NET Framework (`netfx`) plugin location.
+
+| Flag | Short | Description | Required | Default |
+| ---- | ----- | ----------- | -------- | ------- |
+| `--dir` | | Netcore plugin root; the provider subdirectory is created beneath it | No | `~/.nuget/plugins/netcore` |
+| `--force` | | Replace an existing gh-pkg-kit-managed installation | No | `false` |
+
+### nuget credential-provider run
+
+```sh
+gh pkg-kit nuget credential-provider run [-Plugin]
+```
+
+Runs the installed .NET provider from the default netcore plugin root, forwarding stdin/stdout when the optional `-Plugin` argument is supplied.
+NuGet normally launches the DLL directly, without this command.
+Without `-Plugin`, prints an installation hint and exits; use `--help` to view command help.
+Protocol output contains credentials and is intended only for NuGet, not for logging or manual token inspection.
+
+### nuget credential-provider uninstall
+
+```sh
+gh pkg-kit nuget credential-provider uninstall [--dir <path>]
+```
+
+Removes the `CredentialProvider.GhPkgKit` subdirectory from `~/.nuget/plugins/netcore` or the optional `--dir` root.
+Directories without the generation marker and symbolic links are not removed. A missing provider is ignored.
+
+| Flag | Short | Description | Required | Default |
+| ---- | ----- | ----------- | -------- | ------- |
+| `--dir` | | Netcore plugin root | No | `~/.nuget/plugins/netcore` |
+
 ### nuget download
 
 ```sh

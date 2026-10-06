@@ -14,6 +14,8 @@ import (
 	"github.com/srz-zumix/go-gh-extension/pkg/ioutil"
 )
 
+const credentialUsername = "gh-pkg-kit"
+
 // configuration represents the XML structure of a NuGet.Config file.
 type configuration struct {
 	XMLName                  xml.Name           `xml:"configuration"`
@@ -264,7 +266,7 @@ func WriteConfigWithCredentials(srcPath, dstPath string) error {
 		for _, item := range src.Items {
 			switch item.Key {
 			case "Username":
-				item.Value = "gh-pkg-kit"
+				item.Value = credentialUsername
 				usernameSet = true
 			case "ClearTextPassword":
 				item.Value = token
@@ -273,7 +275,7 @@ func WriteConfigWithCredentials(srcPath, dstPath string) error {
 			updated = append(updated, item)
 		}
 		if !usernameSet {
-			updated = append(updated, addItem{XMLName: xml.Name{Local: "add"}, Key: "Username", Value: "gh-pkg-kit"})
+			updated = append(updated, addItem{XMLName: xml.Name{Local: "add"}, Key: "Username", Value: credentialUsername})
 		}
 		if !passwordSet {
 			updated = append(updated, addItem{XMLName: xml.Name{Local: "add"}, Key: "ClearTextPassword", Value: token})
@@ -295,7 +297,7 @@ func WriteConfigWithCredentials(srcPath, dstPath string) error {
 		cfg.PackageSourceCredentials.Sources = append(cfg.PackageSourceCredentials.Sources, credentialSource{
 			XMLName: xml.Name{Local: src.encodedKey},
 			Items: []addItem{
-				{XMLName: xml.Name{Local: "add"}, Key: "Username", Value: "gh-pkg-kit"},
+				{XMLName: xml.Name{Local: "add"}, Key: "Username", Value: credentialUsername},
 				{XMLName: xml.Name{Local: "add"}, Key: "ClearTextPassword", Value: token},
 			},
 		})

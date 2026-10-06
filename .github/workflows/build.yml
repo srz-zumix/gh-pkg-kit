@@ -9,6 +9,12 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dotnet-version:
+          - 8.0.x
+          - 10.0.x
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -26,8 +32,21 @@ jobs:
       - name: Install dependencies
         run: go mod tidy
 
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        env:
+          # Isolate from runner preinstalled SDKs so each leg uses only its matrix version
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+
+      - name: Show .NET SDKs
+        run: dotnet --list-sdks
+
       - name: Build
         run: go build ./...
 
       - name: Run tests
+        env:
+          GH_PKG_KIT_TEST_DOTNET: "1"
         run: go test ./...
