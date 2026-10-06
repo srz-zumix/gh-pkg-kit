@@ -118,10 +118,11 @@ func TestCredentialProviderDotnetRestore(t *testing.T) {
 	defer cancel()
 	command := exec.CommandContext(ctx, dotnet, "tool", "restore", "--configfile", configPath, "--no-cache", "--verbosity", "minimal")
 	command.Dir = dir
-	command.Env = append(os.Environ(), "GH_HOST="+parsed.Hostname(), "GH_ENTERPRISE_TOKEN=local-test-token", "GH_CONFIG_DIR="+dir, "GH_PATH="+gh,
-		"HOME="+dir, "DOTNET_CLI_HOME="+dir, "DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1", "DOTNET_CLI_TELEMETRY_OPTOUT=1",
-		"NUGET_PACKAGES="+filepath.Join(dir, "packages"), "DOTNET_GENERATE_ASPNET_CERTIFICATE=false", "DOTNET_NOLOGO=true",
-		"NUGET_PLUGIN_PATHS=", "NUGET_NETCORE_PLUGIN_PATHS=", "NUGET_NETFX_PLUGIN_PATHS=", "NUGET_HTTP_CACHE_PATH="+filepath.Join(dir, "http-cache"))
+	restoreEnv := []string{"GH_HOST=" + parsed.Hostname(), "GH_ENTERPRISE_TOKEN=local-test-token", "GH_CONFIG_DIR=" + dir, "GH_PATH=" + gh,
+		"HOME=" + dir, "DOTNET_CLI_HOME=" + dir, "DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1", "DOTNET_CLI_TELEMETRY_OPTOUT=1",
+		"NUGET_PACKAGES=" + filepath.Join(dir, "packages"), "DOTNET_GENERATE_ASPNET_CERTIFICATE=false", "DOTNET_NOLOGO=true",
+		"NUGET_PLUGIN_PATHS=", "NUGET_NETCORE_PLUGIN_PATHS=", "NUGET_NETFX_PLUGIN_PATHS=", "NUGET_HTTP_CACHE_PATH=" + filepath.Join(dir, "http-cache")}
+	command.Env = append(os.Environ(), restoreEnv...)
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("dotnet restore: %v\n%s", err, output)
 	}
@@ -130,6 +131,36 @@ func TestCredentialProviderDotnetRestore(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "packages", "credentialprovidertest", "1.0.0", "credentialprovidertest.1.0.0.nupkg")); err != nil {
 		t.Fatalf("package not restored: %v", err)
+	}
+	if err := RemoveCredentialProvider(filepath.Join(dir, ".nuget", "plugins", "netcore")); err != nil {
+		t.Fatal(err)
+	}
+	workDir := t.TempDir()
+	authenticated.Store(false)
+	temporaryHome := t.TempDir()
+	for _, entry := range restoreEnv {
+		name, value, _ := strings.Cut(entry, "=")
+		t.Setenv(name, value)
+	}
+	t.Setenv("HOME", temporaryHome)
+	t.Setenv("DOTNET_CLI_HOME", temporaryHome)
+	t.Setenv("NUGET_PACKAGES", filepath.Join(dir, "temporary-packages"))
+	t.Setenv("NUGET_HTTP_CACHE_PATH", filepath.Join(dir, "temporary-http-cache"))
+	t.Chdir(dir)
+	if err := RunToolRestore(ctx, configPath, workDir, []string{"--no-cache", "--verbosity", "minimal"}); err != nil {
+		t.Fatalf("dotnet restore with temporary provider: %v", err)
+	}
+	if !authenticated.Load() {
+		t.Fatal("NuGet did not authenticate with the temporary credential provider")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "temporary-packages", "credentialprovidertest", "1.0.0", "credentialprovidertest.1.0.0.nupkg")); err != nil {
+		t.Fatalf("package not restored with temporary provider: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(temporaryHome, ".nuget", "plugins", "netcore", ProviderName)); !os.IsNotExist(err) {
+		t.Fatal("temporary restore must not install a permanent provider")
+	}
+	if entries, err := os.ReadDir(workDir); err != nil || len(entries) != 0 {
+		t.Fatalf("temporary provider not removed: %v, %v", entries, err)
 	}
 }
 
