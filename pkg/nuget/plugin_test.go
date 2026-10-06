@@ -87,18 +87,22 @@ func TestCredentialProviderDotnetRestore(t *testing.T) {
 		}
 		authenticated.Store(true)
 		response.Header().Set("Content-Type", "application/json")
+		var writeErr error
 		switch request.URL.Path {
 		case "/_registry/nuget/index.json":
-			fmt.Fprintf(response, `{"version":"3.0.0","resources":[{"@id":%q,"@type":"PackageBaseAddress/3.0.0"},{"@id":%q,"@type":"RegistrationsBaseUrl/3.6.0"}]}`, feedURL+"/_registry/nuget/flat/", feedURL+"/_registry/nuget/registration/")
+			_, writeErr = fmt.Fprintf(response, `{"version":"3.0.0","resources":[{"@id":%q,"@type":"PackageBaseAddress/3.0.0"},{"@id":%q,"@type":"RegistrationsBaseUrl/3.6.0"}]}`, feedURL+"/_registry/nuget/flat/", feedURL+"/_registry/nuget/registration/")
 		case "/_registry/nuget/registration/credentialprovidertest/index.json":
-			fmt.Fprintf(response, `{"count":1,"items":[{"count":1,"lower":"1.0.0","upper":"1.0.0","items":[{"catalogEntry":{"id":"CredentialProviderTest","version":"1.0.0","authors":"test","description":"Local authentication test","listed":true},"packageContent":%q}]}]}`, feedURL+"/_registry/nuget/flat/credentialprovidertest/1.0.0/credentialprovidertest.1.0.0.nupkg")
+			_, writeErr = fmt.Fprintf(response, `{"count":1,"items":[{"count":1,"lower":"1.0.0","upper":"1.0.0","items":[{"catalogEntry":{"id":"CredentialProviderTest","version":"1.0.0","authors":"test","description":"Local authentication test","listed":true},"packageContent":%q}]}]}`, feedURL+"/_registry/nuget/flat/credentialprovidertest/1.0.0/credentialprovidertest.1.0.0.nupkg")
 		case "/_registry/nuget/flat/credentialprovidertest/index.json":
-			fmt.Fprint(response, `{"versions":["1.0.0"]}`)
+			_, writeErr = fmt.Fprint(response, `{"versions":["1.0.0"]}`)
 		case "/_registry/nuget/flat/credentialprovidertest/1.0.0/credentialprovidertest.1.0.0.nupkg":
 			response.Header().Set("Content-Type", "application/octet-stream")
-			_, _ = response.Write(packageData.Bytes())
+			_, writeErr = response.Write(packageData.Bytes())
 		default:
 			response.WriteHeader(http.StatusNotFound)
+		}
+		if writeErr != nil {
+			t.Errorf("failed to write feed response for %s: %v", request.URL.Path, writeErr)
 		}
 	}))
 	defer server.Close()
