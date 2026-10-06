@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/srz-zumix/gh-pkg-kit/pkg/nuget"
+	"github.com/srz-zumix/go-gh-extension/pkg/logger"
 )
 
 func NewInstallCmd() *cobra.Command {
@@ -37,10 +38,11 @@ func newInstallCmd(install func(context.Context, string, bool) (string, error)) 
 			if err != nil {
 				return fmt.Errorf("failed to install NuGet credential provider: %w", err)
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Installed %s\nRequires .NET 8 or later and gh on PATH at runtime\n", path)
+			logger.Info("Installed NuGet credential provider", "path", path)
+			logger.Info("Requires .NET 8 or later and gh on PATH at runtime")
 			for _, name := range []string{"NUGET_PLUGIN_PATHS", "NUGET_NETCORE_PLUGIN_PATHS"} {
 				if os.Getenv(name) != "" {
-					fmt.Fprintf(cmd.ErrOrStderr(), "%s overrides convention-based plugin discovery; unset it or include the installed DLL path\n", name)
+					logger.Warn(name+" overrides convention-based plugin discovery; unset it or include the installed DLL path", "path", path)
 				}
 			}
 			return nil

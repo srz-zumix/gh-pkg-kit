@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -231,7 +232,9 @@ func TestCredentialProviderRejectsInvalidHandshake(t *testing.T) {
 	if err := encoder.Encode(pluginMessage{RequestID: handshake.RequestID, Type: "Response", Method: "Handshake", Payload: payload}); err != nil {
 		t.Fatal(err)
 	}
-	requests.Close()
+	if err := requests.Close(); err != nil {
+		t.Fatal(err)
+	}
 	if err := process.Wait(); err == nil {
 		t.Fatal("incompatible handshake must terminate the provider")
 	}
@@ -269,8 +272,12 @@ func startTestProvider(t *testing.T) (*exec.Cmd, io.WriteCloser, io.ReadCloser) 
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		requests.Close()
-		responses.Close()
+		if err := requests.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
+			t.Errorf("failed to close requests: %v", err)
+		}
+		if err := responses.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
+			t.Errorf("failed to close responses: %v", err)
+		}
 		if process.ProcessState == nil {
 			_ = process.Process.Kill()
 			_ = process.Wait()
