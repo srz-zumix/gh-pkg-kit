@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
-	github.com/cli/cli/v2 v2.103.0
+	github.com/cli/cli/v2 v2.103.2
 	github.com/cli/go-gh/v2 v2.17.0
 	github.com/google/go-containerregistry v0.22.1
 	github.com/google/go-github/v93 v93.0.0
